@@ -11,7 +11,7 @@
     import T from "../helpers/T.svelte"
     import Button from "../inputs/Button.svelte"
 
-    const menus: string[] = ["file", "edit", "view", "help"]
+    const menus: string[] = ["file", "edit", "view", "settings", "help"] // FreeShow Church: + settings
 
     let activeID: null | string = null
     let activeMenu: string[] = []

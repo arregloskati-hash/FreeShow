@@ -5,6 +5,7 @@ import type { HistoryPages } from "../../../types/History"
 import { Main } from "../../../types/IPC/Main"
 import type { MediaStyle, Selected, SelectIds } from "../../../types/Main"
 import type { Item, LayoutRef, SlideData } from "../../../types/Show"
+import type { SettingsTabs } from "../../../types/Tabs"
 import { ShowObj } from "../../classes/Show"
 import { markItemsAsPlayed } from "../../converters/project"
 import { sendMain } from "../../IPC/main"
@@ -62,6 +63,7 @@ import {
     popupData,
     previousShow,
     profiles,
+    activeProfile,
     projects,
     projectTemplates,
     projectView,
@@ -134,6 +136,15 @@ export function menuClick(id: string, enabled = true, menu: ContextMenuItem | nu
     console.info("MENU CLICK: " + id, obj)
 
     clickActions[id](obj)
+}
+
+// FreeShow Church: Settings menu helpers
+const CHURCH_SETTINGS_TABS: SettingsTabs[] = ["general", "display_settings", "styles", "audio", "connection", "files", "profiles", "theme", "other"]
+function openChurchSettings(tab: SettingsTabs | null = null) {
+    const access = get(profiles)[get(activeProfile) || ""]?.access?.settings || {}
+    if (Object.keys(access).length > 7) return // settings locked for this profile
+    if (tab && access[tab] !== "none") settingsTab.set(tab)
+    activePage.set("settings")
 }
 
 const clickActions = {
@@ -247,6 +258,9 @@ const clickActions = {
     docs: () => sendMain(Main.URL, "https://freeshow.app/docs"),
     shortcuts: () => activePopup.set("shortcuts"),
     about: () => activePopup.set("about"),
+    // FreeShow Church: menu bar "Settings" (Cmd/Ctrl + ,) — unless settings are locked for this profile
+    church_settings: () => openChurchSettings(),
+    ...Object.fromEntries(CHURCH_SETTINGS_TABS.map((tab) => ["church_settings_" + tab, () => openChurchSettings(tab)])),
     quick_search: () => quickSearchActive.set(true),
     quick_start_guide: () => guideActive.set(true),
 

@@ -10,7 +10,7 @@ const mc = (id: string) => sendToMain(ToMain.MENU, id)
 export function template(strings: Dictionary): any {
     const appMenu = {
         label: app.name,
-        submenu: [{ label: strings.main?.about || "About", role: "about" }, { type: "separator" }, { role: "services" }, { type: "separator" }, { role: "hide" }, { role: "hideOthers" }, { role: "unhide" }, { type: "separator" }, { label: strings.main?.quit || "Quit", role: "quit" }]
+        submenu: [{ label: strings.main?.about || "About", role: "about" }, { type: "separator" }, { label: (strings.menu?.settings || "Settings") + "…", click: () => mc("church_settings") }, { type: "separator" }, { role: "services" }, { type: "separator" }, { role: "hide" }, { role: "hideOthers" }, { role: "unhide" }, { type: "separator" }, { label: strings.main?.quit || "Quit", role: "quit" }]
     }
 
     const fileMenu = {
@@ -61,6 +61,18 @@ export function template(strings: Dictionary): any {
         ]
     }
 
+    // FreeShow Church: Settings in the menu bar (Cmd + , on Mac / Ctrl + , on Windows)
+    const SETTINGS_TABS = ["general", "display_settings", "styles", "audio", "connection", "files", "profiles", "theme", "other"]
+    const SETTINGS_FALLBACK: { [key: string]: string } = { general: "General", display_settings: "Outputs", styles: "Styles", audio: "Audio", connection: "Connection", files: "Files", profiles: "Profiles", theme: "Theme", other: "Other" }
+    const settingsMenu = {
+        label: strings.menu?.settings || "Settings",
+        submenu: [
+            { label: (strings.menu?.settings || "Settings") + "…", accelerator: "CmdOrCtrl+,", click: () => mc("church_settings") },
+            { type: "separator" },
+            ...SETTINGS_TABS.map((tab) => ({ label: strings.settings?.[tab] || SETTINGS_FALLBACK[tab], click: () => mc("church_settings_" + tab) }))
+        ]
+    }
+
     const helpMenu = {
         label: strings.titlebar?.help || "Help",
         submenu: [
@@ -73,5 +85,5 @@ export function template(strings: Dictionary): any {
     }
 
     // as Array<(Electron.MenuItemConstructorOptions) | (Electron.MenuItem)>
-    return [...(isMac ? [appMenu] : []), fileMenu, editMenu, viewMenu, helpMenu]
+    return [...(isMac ? [appMenu] : []), fileMenu, editMenu, viewMenu, settingsMenu, helpMenu]
 }

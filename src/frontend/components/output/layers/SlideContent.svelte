@@ -137,7 +137,8 @@
         if (!item) return false
         const type = item.type || "text"
         if (type !== "text") return false
-        return !!item.auto
+        // FreeShow Church: template "textFit" also needs measuring (e.g. lower third templates)
+        return !!item.auto || (!!item.textFit && item.textFit !== "none")
     }
 
     // kick off hidden textbox renders that warm the autosize cache before we flip "show" on
@@ -155,7 +156,9 @@
             if (!shouldPrecomputeAutoSize(item)) return
             const key = createAutoSizeKey(item, index)
             if (!key) return
-            if (item.autoFontSize) return // skip entries that already have cached measurements
+            // FreeShow Church: a saved autoFontSize is measured for the show's own layout, not for an output
+            // style template, so only trust it when no template is involved
+            if (item.autoFontSize && !hasStyleTemplate) return
             pendingKeys.add(key)
             targets.push({ item: clone(item), index, key })
         })
@@ -186,6 +189,22 @@
         if (!Object.keys(customTemplate).length && out?.id === "temp") customTemplate = $templates[$scriptureSettings.template] || {}
 
         return slideHasAutoSizeItem(customTemplate)
+    }
+
+    $: hasStyleTemplate = Object.keys(getStyleTemplate(outSlide, currentStyle) || {}).length > 0
+
+    // FreeShow Church: keep the current text on screen until the next slide's text size has been measured
+    // (prevents blank/jumping frames when stepping quickly through slides on template outputs like lower thirds)
+    let precomputeWaitToken = 0
+    async function waitForPrecompute(maxWait = 300) {
+        if (preview || !precomputePending.size) return true
+        const token = ++precomputeWaitToken
+        const started = performance.now()
+        while (precomputePending.size && performance.now() - started < maxWait) {
+            await new Promise((r) => setTimeout(r, 8))
+            if (token !== precomputeWaitToken) return false // a newer slide came in
+        }
+        return token === precomputeWaitToken
     }
 
     let isClearingToEmpty = false
@@ -219,6 +238,8 @@
         if (isClearingToEmpty) await waitUntilValueIsDefined(() => !isClearingToEmpty, 10, betweenClearingTransition.duration)
 
         scheduleAutoSizePrecompute(currentSlide.items)
+        if (!(await waitForPrecompute())) return
+        if (!currentSlide?.items?.length) return
 
         // get any items with no transition between the two slides
         let oldItemTransition = currentItems.find((a) => a.actions?.transition)?.actions?.transition

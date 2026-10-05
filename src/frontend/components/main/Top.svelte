@@ -110,12 +110,10 @@
         <TopButton id="show" />
         <TopButton id="edit" disabled={editDisabled} />
         <TopButton id="stage" />
+        <!-- FreeShow Church: Settings moved to the menu bar (Settings menu, Cmd/Ctrl + ,) -->
     </span>
     <span style="width: var(--navigation-width);justify-content: flex-end;">
         <TopButton id="draw" red={$drawTool === "fill" || ($drawTool === "zoom" && $drawSettings.zoom?.size !== 100) || !!($drawTool === "paint" && $paintCache?.length)} hideLabel />
-        {#if !settingsDisabled}
-            <TopButton id="settings" hideLabel />
-        {/if}
 
         <!-- <MaterialButton id="output_window_button" class="context #output display {$outputDisplay ? 'on' : 'off'}" title="menu.{$outputDisplay ? (confirm ? 'again_confirm' : '_title_display_stop') : '_title_display'} [Ctrl+O]" style={$outputDisplay || disableClick ? "" : "border-bottom: 2px solid var(--secondary);"} on:click={toggleOutput} disabled={(!$outputDisplay && !physicalOutputWindows.length) || disableClick} red={$outputDisplay}>
             {#if $outputDisplay}

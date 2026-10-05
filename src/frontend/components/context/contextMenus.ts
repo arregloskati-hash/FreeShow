@@ -40,6 +40,17 @@ export const contextMenuItems: { [key: string]: ContextMenuItem } = {
     quit: { label: "main.quit", icon: "close", iconColor: "#ff5454" },
     settings: { label: "menu.settings", icon: "settings", iconColor: "var(--secondary)" },
     about: { label: "main.about", icon: "info" },
+    // FreeShow Church: Settings menu
+    church_settings: { label: "menu.settings", icon: "settings", shortcuts: ["Ctrl+,"] },
+    church_settings_general: { label: "settings.general", icon: "general" },
+    church_settings_display_settings: { label: "settings.display_settings", icon: "display_settings" },
+    church_settings_styles: { label: "settings.styles", icon: "styles" },
+    church_settings_audio: { label: "settings.audio", icon: "audio" },
+    church_settings_connection: { label: "settings.connection", icon: "connection" },
+    church_settings_files: { label: "settings.files", icon: "files" },
+    church_settings_profiles: { label: "settings.profiles", icon: "profiles" },
+    church_settings_theme: { label: "settings.theme", icon: "theme" },
+    church_settings_other: { label: "settings.other", icon: "other" },
     shortcuts: { label: "popup.shortcuts", icon: "shortcut", shortcuts: ["Ctrl+?"] },
     rename: { label: "actions.rename", icon: "rename", iconColor: "#6effbe", shortcuts: ["F2"] },
     delete: { label: "actions.delete", icon: "delete", iconColor: "#ff5454", shortcuts: ["Del"] },
@@ -234,6 +245,8 @@ export const contextMenuLayouts: { [key: string]: string[] } = {
     file: ["save", "import_more", "export_more", "SEPARATOR", "quit"],
     edit: ["undo", "redo", "history", "SEPARATOR", "cut", "copy", "paste", "delete", "SEPARATOR", "selectAll"], // , "cut"
     view: ["focus_mode", "fullscreen"], // , "resetZoom", "zoomIn", "zoomOut"
+    // FreeShow Church: Settings menu (Windows/Linux menu bar)
+    settings: ["church_settings", "SEPARATOR", "church_settings_general", "church_settings_display_settings", "church_settings_styles", "church_settings_audio", "church_settings_connection", "church_settings_files", "church_settings_profiles", "church_settings_theme", "church_settings_other"],
     help: ["quick_search", "shortcuts", "docs", "quick_start_guide", "about"],
     // MAIN
     // default: ["save", "settings", "history", "SEPARATOR", "about", "quit"],

@@ -24,7 +24,7 @@ import { changeSlidesView } from "../show/slides"
 import { activeDrawerTab, activeEdit, activeFocus, activePage, activePopup, activeProject, activeStage, alertMessage, audioChannelsData, contextActive, drawer, editMode, focusedArea, focusMode, guideActive, media, os, outLocked, outputs, playingVideoState, projects, quickSearchActive, refreshEditSlide, selected, showRecentlyUsedProjects, special, spellcheck, styles, timelineRecordingAction, topContextActive } from "../stores"
 import { audioExtensions, imageExtensions, videoExtensions } from "../values/extensions"
 import { drawerTabs } from "../values/tabs"
-import { activeShow } from "./../stores"
+import { activeShow, activeProfile, profiles } from "./../stores"
 import { hideDisplay, isOutputWindow, togglePanels, triggerFunction } from "./common"
 import { send } from "./request"
 import { save } from "./save"
@@ -54,7 +54,15 @@ const ctrlKeys = {
     t: () => togglePanels(),
     y: () => redo(),
     z: () => undo(),
-    "?": () => activePopup.set("shortcuts")
+    "?": () => activePopup.set("shortcuts"),
+    // FreeShow Church: standard app shortcut for Settings (Cmd + , on Mac / Ctrl + , on Windows)
+    ",": () => openSettingsPage()
+}
+
+function openSettingsPage() {
+    const profile = get(profiles)[get(activeProfile) || ""]
+    if (Object.keys(profile?.access?.settings || {}).length > 7) return // settings locked for this profile
+    activePage.set("settings")
 }
 
 const shiftCtrlKeys = {

@@ -112,9 +112,10 @@
         if (preview) {
             loaded = true
         } else {
+            // FreeShow Church: was 100ms; one frame is enough and keeps template outputs snappy
             setTimeout(() => {
                 loaded = true
-            }, 100)
+            }, 16)
         }
     })
     onDestroy(() => {
@@ -313,7 +314,10 @@
             } else if (preview) {
                 fontSize = item?.previewAutoFontSize || item?.autoFontSize || 100
             } else {
-                fontSize = item?.autoFontSize || 0
+                // FreeShow Church: prefer the measured size for this output (template) over the show's saved size
+                const cacheKey = buildAutoSizeCacheKey()
+                const cached = cacheKey ? readAutoSizeCache(cacheKey) : undefined
+                fontSize = cached?.fontSize || item?.autoFontSize || 0
             }
 
             hideUntilAutosized = willHide
@@ -586,12 +590,11 @@
 
         // Fix for OUTPUT getting stuck with wrong cache when output window dimensions change
         // Include container dimensions to invalidate cache when OUTPUT resolution/size changes
-        if (!preview && !isStage && itemElem) {
-            const container = itemElem.parentElement
-            if (container) {
-                boxDimensions.containerWidth = container.clientWidth ? Math.round(container.clientWidth / 5) * 5 : 0
-                boxDimensions.containerHeight = container.clientHeight ? Math.round(container.clientHeight / 5) * 5 : 0
-            }
+        // FreeShow Church: use the output scale instead of the DOM container size, so the hidden "precompute"
+        // textbox and the visible one share a cache entry (lets the next slide appear instantly, no blink)
+        if (!preview && !isStage) {
+            boxDimensions.outputRatio = Math.round((ratio || 1) * 1000)
+            boxDimensions.windowSize = typeof window !== "undefined" ? `${Math.round(window.innerWidth / 5) * 5}x${Math.round(window.innerHeight / 5) * 5}` : ""
         }
 
         return JSON.stringify({
@@ -638,6 +641,10 @@
         if (!cacheKey) return true
         const cacheSignature = buildAutoSizeSignature(itemElem?.clientWidth, itemElem?.clientHeight, chords)
         const cachedResult = readAutoSizeCache(cacheKey)
+
+        // FreeShow Church: in output windows, a slightly stale size (same textbox, e.g. the template styles
+        // landing a moment later) is far less visible than blanking the text, so only hide when nothing is known yet
+        if ($currentWindow === "output" && cachedResult?.fontSize) return false
 
         return !(cachedResult && cachedResult.signature === cacheSignature)
     }
