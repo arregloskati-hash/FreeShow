@@ -104,6 +104,7 @@ import { isMainWindow, startAutosave } from "./common"
 import { setLanguage } from "./language"
 import { startRemoteController } from "./remoteController"
 import { send } from "./request"
+import { EMBER_THEME_ID, shouldAutoApplyEmber } from "../church/ember"
 
 export function updateSyncedSettings(data: any) {
     if (!data || !Object.keys(data).length) return
@@ -161,6 +162,12 @@ export function updateSettings(data: any) {
     sendMain(Main.START, { ports: customPorts, max: data.maxConnections === undefined ? 10 : data.maxConnections, disabled, data: get(serverData) })
 
     // theme
+    // FreeShow Church: switch to the Ember look the first time this build runs
+    if (shouldAutoApplyEmber()) {
+        data.theme = EMBER_THEME_ID
+        theme.set(EMBER_THEME_ID)
+        if (!get(themes)[EMBER_THEME_ID]) themes.update((t) => ({ ...t, [EMBER_THEME_ID]: clone(defaultThemes[EMBER_THEME_ID]) }))
+    }
     let currentTheme = get(themes)[data.theme]
     if (currentTheme?.colors) {
         // update colors (pre 0.9.2 or 1.4.9)

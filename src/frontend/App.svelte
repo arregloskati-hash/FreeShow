@@ -22,6 +22,7 @@
     import { focusArea, logerror, mainClick, toggleRemoteStream } from "./utils/common"
     import { keydown } from "./utils/shortcuts"
     import { startup } from "./utils/startup"
+    import { setUiStyle } from "./church/ember"
 
     startup()
 
@@ -49,6 +50,9 @@
     // set language direction
     $: document.documentElement.setAttribute("dir", $localeDirection)
     $: document.documentElement.setAttribute("lang", $language)
+
+    // FreeShow Church: Ember layout styling (main window only)
+    $: setUiStyle($theme, !$currentWindow)
 
     $: contrastColor = getContrast($themes[$theme]?.colors?.secondary || "")
     $: secondaryContrast = `--secondary-text: ${contrastColor === "#000000" ? "#131313" : "#f0f0ff"};`

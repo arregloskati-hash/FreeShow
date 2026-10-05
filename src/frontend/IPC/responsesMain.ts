@@ -137,6 +137,8 @@ export const mainResponses: MainResponses = {
     [Main.MEDIA]: (a) => media.set(a),
     [Main.THEMES]: (a) => {
         themes.set(Object.keys(a).length ? a : clone(defaultThemes))
+        // FreeShow Church: make sure the Ember theme is available for existing installs
+        if (!get(themes).ember) themes.update((t) => ({ ...t, ember: clone(defaultThemes.ember) }))
 
         // update if themes are loaded after settings
         if (get(theme) !== "default") updateThemeValues(get(themes)[get(theme)])

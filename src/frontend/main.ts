@@ -4,6 +4,7 @@
 import * as Sentry from "@sentry/electron/renderer"
 import "svelte"
 import App from "./App.svelte"
+import "./church/ember.css"
 import { ERROR_FILTER } from "./utils/common"
 
 // error reporting (production only)

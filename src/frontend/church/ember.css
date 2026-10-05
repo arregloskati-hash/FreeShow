@@ -1,0 +1,457 @@
+/* =========================================================
+   FreeShow Church — "Ember" look
+   Warm near-black surfaces, soft orange glow, rounded cards, pill buttons.
+   Everything is scoped to :root[data-ui="ember"] (set only in the main window
+   when the Ember theme is selected), so output screens are never affected.
+   ========================================================= */
+
+:root[data-ui="ember"] {
+    --ember: #ff6a1f;
+    --ember-hot: #ff8a3d;
+    --ember-deep: #d9480f;
+    --ember-glow: rgb(255 106 31 / 0.45);
+    --ember-soft: rgb(255 106 31 / 0.12);
+    --ember-line: rgb(255 140 80 / 0.12);
+    --ember-line-strong: rgb(255 140 80 / 0.28);
+    --ember-card: linear-gradient(180deg, #17100b 0%, #110b08 100%);
+    --ember-btn: linear-gradient(180deg, #ff8a3d 0%, #ff6a1f 45%, #e2500f 100%);
+    --ember-radius: 14px;
+    --ember-radius-sm: 9px;
+    --ember-gap: 6px;
+
+    --font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+    --navigation-width: 300px;
+}
+
+/* ---------- Canvas ---------- */
+
+:root[data-ui="ember"] body {
+    background: #070403;
+    -webkit-font-smoothing: antialiased;
+    letter-spacing: 0.1px;
+}
+
+:root[data-ui="ember"] main:not(.background) {
+    background:
+        radial-gradient(120% 60% at 50% 115%, rgb(255 98 20 / 0.20) 0%, rgb(255 98 20 / 0.05) 40%, transparent 70%),
+        radial-gradient(60% 40% at 50% -10%, rgb(255 120 50 / 0.06) 0%, transparent 70%),
+        #080504 !important;
+}
+
+:root[data-ui="ember"] ::selection {
+    background-color: rgb(255 106 31 / 0.35);
+}
+
+/* Headings: lighter, cleaner */
+:root[data-ui="ember"] h1,
+:root[data-ui="ember"] h2,
+:root[data-ui="ember"] h3,
+:root[data-ui="ember"] h4,
+:root[data-ui="ember"] h5,
+:root[data-ui="ember"] h6 {
+    font-weight: 500;
+    letter-spacing: 0.2px;
+}
+
+/* Scrollbars: thin and warm */
+:root[data-ui="ember"] ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+:root[data-ui="ember"] ::-webkit-scrollbar-track,
+:root[data-ui="ember"] ::-webkit-scrollbar-corner {
+    background: transparent;
+}
+:root[data-ui="ember"] ::-webkit-scrollbar-thumb {
+    background: rgb(255 140 80 / 0.18);
+    border-radius: 99px;
+}
+:root[data-ui="ember"] ::-webkit-scrollbar-thumb:hover {
+    background: rgb(255 140 80 / 0.4);
+}
+
+/* ---------- Top bar ---------- */
+
+:root[data-ui="ember"] .column > .top {
+    min-height: 52px;
+    height: 52px;
+    padding: 0 10px;
+    align-items: center;
+    box-shadow: none;
+    background:
+        radial-gradient(rgb(255 255 255 / 0.07) 1px, transparent 1.2px) 0 0 / 14px 14px,
+        linear-gradient(180deg, #0b0705 0%, #080504 100%);
+    border-bottom: 1px solid var(--ember-line);
+}
+
+/* logo */
+:root[data-ui="ember"] .column > .top > span:first-child h1 {
+    color: var(--text) !important;
+    font-weight: 600 !important;
+    font-size: 1.35em !important;
+    letter-spacing: 0.3px;
+    text-align: start !important;
+    padding: 0 6px !important;
+    display: flex;
+    align-items: center;
+    gap: 9px;
+}
+:root[data-ui="ember"] .column > .top > span:first-child h1::before {
+    content: "";
+    width: 22px;
+    height: 22px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    background: radial-gradient(circle at 50% 60%, #fff3e8 0 18%, var(--ember-hot) 30%, var(--ember-deep) 62%, transparent 64%);
+    box-shadow: 0 0 14px var(--ember-glow);
+}
+
+/* page switcher (Show / Edit / Stage) as a segmented pill */
+:root[data-ui="ember"] .column > .top > span:nth-child(2) {
+    align-items: center;
+    gap: 4px;
+    padding: 4px;
+    height: 40px;
+    border-radius: 999px;
+    background: rgb(255 255 255 / 0.03);
+    border: 1px solid var(--ember-line);
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.03);
+}
+:root[data-ui="ember"] .column > .top > span:nth-child(2) > button {
+    height: 30px;
+    min-height: 30px;
+    border-radius: 999px !important;
+    border: none !important;
+    padding: 0 1.2em !important;
+    font-weight: 500;
+    color: rgb(246 238 232 / 0.75) !important;
+}
+:root[data-ui="ember"] .column > .top > span:nth-child(2) > button.isActive {
+    background: var(--ember-btn) !important;
+    color: #fff !important;
+    box-shadow:
+        0 0 18px rgb(255 106 31 / 0.45),
+        inset 0 1px 0 rgb(255 255 255 / 0.35) !important;
+}
+:root[data-ui="ember"] .column > .top > span:nth-child(2) > button.isActive svg {
+    fill: #fff !important;
+}
+
+/* right-side icons */
+:root[data-ui="ember"] .column > .top > span:last-child {
+    align-items: center;
+    gap: 6px;
+}
+:root[data-ui="ember"] .column > .top > span:last-child > button:not(.display) {
+    width: 38px;
+    height: 38px;
+    min-height: 38px;
+    padding: 0 !important;
+    border-radius: 50% !important;
+    border: 1px solid var(--ember-line) !important;
+    background: rgb(255 255 255 / 0.03) !important;
+}
+:root[data-ui="ember"] .column > .top > span:last-child > button.isActive {
+    border-color: var(--ember-line-strong) !important;
+    background: var(--ember-soft) !important;
+    box-shadow: 0 0 14px rgb(255 106 31 / 0.25);
+}
+
+/* "show output" button = primary call to action */
+:root[data-ui="ember"] .column > .top button.display {
+    height: 38px;
+    min-width: 64px !important;
+    padding: 0 16px;
+    border-radius: 999px;
+    border: 1px solid rgb(255 200 160 / 0.35) !important;
+    background: var(--ember-btn) !important;
+    box-shadow: 0 0 20px rgb(255 106 31 / 0.4), inset 0 1px 0 rgb(255 255 255 / 0.35);
+}
+:root[data-ui="ember"] .column > .top button.display.on {
+    background: linear-gradient(180deg, #ff4d4d 0%, #c81e1e 100%) !important;
+    box-shadow: 0 0 20px rgb(255 50 50 / 0.45), inset 0 1px 0 rgb(255 255 255 / 0.3);
+}
+:root[data-ui="ember"] .column > .top button.display:disabled {
+    background: rgb(255 255 255 / 0.05) !important;
+    box-shadow: none;
+    border-color: var(--ember-line) !important;
+}
+:root[data-ui="ember"] .column > .top button.display svg {
+    fill: #fff !important;
+}
+
+/* ---------- Floating panels ---------- */
+
+/* resize handles become the gaps between cards */
+:root[data-ui="ember"] .panel::after {
+    background-color: transparent !important;
+}
+:root[data-ui="ember"] .panel.zero::after {
+    background-color: rgb(255 255 255 / 0.03) !important;
+    border-radius: var(--ember-radius-sm);
+}
+
+:root[data-ui="ember"] .column > .row {
+    padding: var(--ember-gap) var(--ember-gap) 0;
+}
+
+:root[data-ui="ember"] .column > .row > .panel > .left,
+:root[data-ui="ember"] .column > .row > .panel > .right,
+:root[data-ui="ember"] .column > .row > .center {
+    border-radius: var(--ember-radius);
+    border: 1px solid var(--ember-line);
+    background: var(--ember-card);
+    box-shadow: 0 10px 30px rgb(0 0 0 / 0.35), inset 0 1px 0 rgb(255 255 255 / 0.03);
+    overflow: hidden;
+}
+:root[data-ui="ember"] .column > .row > .center {
+    background:
+        radial-gradient(80% 60% at 50% 120%, rgb(255 98 20 / 0.08) 0%, transparent 70%),
+        #0c0806;
+}
+
+/* bottom drawer card */
+:root[data-ui="ember"] section.drawer {
+    margin: var(--ember-gap);
+    margin-top: 0;
+    border-radius: var(--ember-radius);
+    border: 1px solid var(--ember-line);
+    background: var(--ember-card) !important;
+    box-shadow: 0 -6px 30px rgb(0 0 0 / 0.35);
+    overflow: hidden;
+}
+
+/* ---------- Buttons ---------- */
+
+:root[data-ui="ember"] button {
+    border-radius: var(--ember-radius-sm);
+}
+
+/* filled / primary buttons -> glowing orange pill */
+:root[data-ui="ember"] button.contained {
+    background: var(--ember-btn) !important;
+    color: #fff !important;
+    border-radius: 999px !important;
+    filter: none;
+    box-shadow: 0 0 16px rgb(255 106 31 / 0.35), inset 0 1px 0 rgb(255 255 255 / 0.3);
+}
+:root[data-ui="ember"] button.contained:disabled {
+    background: rgb(255 255 255 / 0.06) !important;
+    box-shadow: none;
+}
+
+/* outlined buttons -> dark pill with soft border */
+:root[data-ui="ember"] button.outlined {
+    border-radius: 999px !important;
+    border-color: var(--ember-line-strong) !important;
+    background: rgb(255 255 255 / 0.02) !important;
+}
+
+/* default "active" state (was a pink underline) -> warm tint + glow line */
+:root[data-ui="ember"] button.isActive:not(.tab) {
+    background: var(--ember-soft) !important;
+    border-bottom: none !important;
+    box-shadow: inset 0 -2px 0 var(--ember);
+}
+
+/* vertical category lists (Settings, drawer categories) */
+:root[data-ui="ember"] button.tab:not(.outlined) {
+    border-left: 3px solid transparent !important;
+    border-radius: var(--ember-radius-sm) !important;
+    margin: 1px 6px;
+    width: calc(100% - 12px);
+}
+:root[data-ui="ember"] button.tab.isActive {
+    border-left: 3px solid var(--ember) !important;
+    background: linear-gradient(90deg, rgb(255 106 31 / 0.22) 0%, rgb(255 106 31 / 0.05) 100%) !important;
+    box-shadow: -4px 0 14px -4px var(--ember-glow);
+}
+
+/* ---------- Tab strips ---------- */
+
+:root[data-ui="ember"] .tabs {
+    background: transparent !important;
+    gap: 4px;
+    padding: 6px;
+}
+:root[data-ui="ember"] .tabs > button {
+    border-radius: 999px !important;
+    border: 1px solid transparent !important;
+    min-height: 30px;
+}
+:root[data-ui="ember"] .tabs > button.isActive {
+    background: var(--ember-soft) !important;
+    border: 1px solid var(--ember-line-strong) !important;
+    box-shadow: 0 0 14px rgb(255 106 31 / 0.18) !important;
+}
+
+/* drawer tab row (Shows, Media, Audio, ...) */
+:root[data-ui="ember"] .drawer > .top {
+    background: rgb(255 255 255 / 0.015) !important;
+    border-bottom: 1px solid var(--ember-line);
+    padding: 4px 6px;
+}
+:root[data-ui="ember"] .drawer > .top .tabs {
+    padding: 0;
+}
+:root[data-ui="ember"] .drawer > .top .tabs > button {
+    border-radius: 999px !important;
+    border-bottom: none !important;
+    padding: 0.25em 0.95em !important;
+    margin: 2px 0;
+}
+:root[data-ui="ember"] .drawer > .top .tabs > button.isActive {
+    background: var(--ember-btn) !important;
+    color: #fff !important;
+    box-shadow: 0 0 14px rgb(255 106 31 / 0.4), inset 0 1px 0 rgb(255 255 255 / 0.3) !important;
+}
+:root[data-ui="ember"] .drawer > .top .tabs > button.isActive svg {
+    fill: #fff !important;
+}
+
+/* ---------- Inputs ---------- */
+
+:root[data-ui="ember"] input[type="text"],
+:root[data-ui="ember"] input[type="number"],
+:root[data-ui="ember"] input.search,
+:root[data-ui="ember"] textarea {
+    border-radius: var(--ember-radius-sm);
+}
+:root[data-ui="ember"] input:focus,
+:root[data-ui="ember"] textarea:focus {
+    outline: none;
+    box-shadow: 0 0 0 1px var(--ember-line-strong), 0 0 12px rgb(255 106 31 / 0.15);
+}
+
+/* ---------- Floating action buttons (New show, +, etc.) ---------- */
+
+:root[data-ui="ember"] .row:has(> button) {
+    --background: rgb(20 12 8 / 0.85);
+}
+:root[data-ui="ember"] .row.gradient button,
+:root[data-ui="ember"] .row.gradient button:not(.isActive):not(:disabled):hover,
+:root[data-ui="ember"] .row.gradient button:not(.isActive):not(:disabled):active {
+    background: var(--ember-btn) !important;
+    border: 1px solid rgb(255 200 160 / 0.35) !important;
+    color: #fff !important;
+    filter: none !important;
+    box-shadow: 0 0 18px rgb(255 106 31 / 0.45), inset 0 1px 0 rgb(255 255 255 / 0.3) !important;
+}
+:root[data-ui="ember"] .row.gradient button svg,
+:root[data-ui="ember"] .row.gradient button svg g {
+    fill: #fff !important;
+}
+:root[data-ui="ember"] .row.gradient {
+    border-color: transparent !important;
+    background: transparent !important;
+    overflow: visible !important;
+    box-shadow: none !important;
+}
+
+/* ---------- Slide thumbnails ---------- */
+
+:root[data-ui="ember"] div.main:has(> .slide) {
+    padding: 4px;
+    outline: none !important;
+}
+:root[data-ui="ember"] div.main > .slide {
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid rgb(255 140 80 / 0.10);
+    background: #070403;
+    transition: box-shadow 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
+}
+:root[data-ui="ember"] div.main > .slide:hover {
+    border-color: var(--ember-line-strong);
+}
+:root[data-ui="ember"] div.main > .slide .label {
+    background: linear-gradient(180deg, #120c09 0%, #0d0806 100%);
+    font-weight: 600;
+}
+/* live slide: glowing ember frame */
+:root[data-ui="ember"] div.main.active > .slide {
+    border-color: rgb(255 170 120 / 0.9);
+    box-shadow:
+        0 0 0 1px var(--ember),
+        0 0 24px rgb(255 106 31 / 0.55),
+        0 0 60px rgb(255 106 31 / 0.18);
+}
+:root[data-ui="ember"] div.main.focused:not(.active) > .slide {
+    border-color: var(--ember-line-strong);
+    box-shadow: 0 0 0 1px rgb(255 106 31 / 0.35);
+}
+
+/* "currently live" outline on list items (shows, media, audio) */
+:root[data-ui="ember"] button.showOutline {
+    --outline-color: var(--ember) !important;
+    outline: 1px solid rgb(255 150 90 / 0.85) !important;
+    outline-offset: -1px !important;
+    background: linear-gradient(90deg, rgb(255 106 31 / 0.20) 0%, rgb(255 106 31 / 0.06) 100%) !important;
+    box-shadow: 0 0 16px rgb(255 106 31 / 0.25);
+}
+
+/* ---------- Output preview (right panel) ---------- */
+
+:root[data-ui="ember"] .outputPreview {
+    border-color: var(--ember-line-strong) !important;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+/* ---------- Simple buttons (active state) ---------- */
+
+:root[data-ui="ember"] button.active:not(.isActive) {
+    background-color: var(--ember-soft) !important;
+}
+
+/* Settings side navigation */
+:root[data-ui="ember"] .left .main > button#button {
+    margin: 2px 8px;
+    width: calc(100% - 16px);
+    border-radius: var(--ember-radius-sm);
+    padding: 0.35em 0.8em;
+}
+:root[data-ui="ember"] .left .main > button#button.active {
+    background: linear-gradient(90deg, rgb(255 106 31 / 0.24) 0%, rgb(255 106 31 / 0.06) 100%) !important;
+    box-shadow: inset 3px 0 0 var(--ember), -4px 0 14px -4px var(--ember-glow);
+}
+:root[data-ui="ember"] .left .main > button#button.active svg {
+    fill: var(--ember-hot) !important;
+}
+:root[data-ui="ember"] .left .main:has(> button#button) {
+    padding-top: 8px;
+}
+
+/* ---------- Menus & popups ---------- */
+
+:root[data-ui="ember"] .contextMenu {
+    border-radius: 12px;
+    border: 1px solid var(--ember-line-strong);
+    background: rgb(20 12 8 / 0.96) !important;
+    box-shadow: 0 18px 50px rgb(0 0 0 / 0.55), 0 0 30px rgb(255 106 31 / 0.08);
+    padding: 6px 0;
+}
+:root[data-ui="ember"] .contextMenu hr {
+    background-color: var(--ember-line);
+}
+:root[data-ui="ember"] .contextMenu .item {
+    border-radius: 7px;
+    margin: 0 6px;
+}
+
+:root[data-ui="ember"] .popup {
+    background:
+        radial-gradient(70% 50% at 50% 110%, rgb(255 98 20 / 0.18) 0%, transparent 70%),
+        rgb(0 0 0 / 0.6);
+}
+:root[data-ui="ember"] .popup .card {
+    border-radius: 18px;
+    border: 1px solid var(--ember-line-strong);
+    background:
+        radial-gradient(90% 60% at 50% 0%, rgb(255 120 50 / 0.07) 0%, transparent 70%),
+        #120c09;
+    box-shadow: 0 30px 80px rgb(0 0 0 / 0.6), 0 0 40px rgb(255 106 31 / 0.10);
+}
+:root[data-ui="ember"] .popup .card h2 {
+    font-weight: 500;
+}

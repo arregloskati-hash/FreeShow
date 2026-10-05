@@ -1,6 +1,8 @@
 import type { Themes } from "../../../../types/Settings"
+import { emberTheme } from "../../../church/ember"
 
 export const defaultThemes: { [key: string]: Themes } = {
+    ember: emberTheme,
     default: {
         name: "default",
         default: true,
