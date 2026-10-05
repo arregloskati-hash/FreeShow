@@ -6,17 +6,21 @@ use_node || die "Node not found — run '1 - Setup.command' first"
 [ -d node_modules ] || die "Dependencies missing — run '1 - Setup.command' first"
 
 ARCH="$(uname -m)"; [ "$ARCH" = "x86_64" ] && ARCH="x64"
+# Put the source back in dev mode afterwards (the production build rewrites public/index.html).
+trap 'node scripts/cleanBuilds.js >/dev/null 2>&1' EXIT
+
 say "Building FreeShow from source ($ARCH) — takes a few minutes"
 npm run build || die "Build failed — see church/logs/build.log"
 
 say "Packaging the Mac app"
 rm -rf dist
-npx electron-builder --config config/building/electron-builder.yaml --mac dir --"$ARCH" --publish never \
-  -c.mac.identity=null -c.afterSign=null -c.publish=null -c.mac.notarize=false \
+npx electron-builder --config church/electron-builder.church.js --mac dir --"$ARCH" --publish never \
   || die "Packaging failed — see church/logs/build.log"
 
 SRC_APP="$(ls -d dist/mac*/FreeShow.app 2>/dev/null | head -1)"
 [ -d "$SRC_APP" ] || die "Could not find the packaged app in dist/"
+
+node scripts/cleanBuilds.js >/dev/null 2>&1   # restore dev-mode source files
 
 # Ad-hoc sign so macOS (Apple Silicon) will run it.
 codesign --force --deep --sign - "$SRC_APP" || warn "codesign reported a problem"
