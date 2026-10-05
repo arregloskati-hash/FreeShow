@@ -6,6 +6,7 @@
     import Media from "./tools/Media.svelte"
     import Metadata from "./tools/Metadata.svelte"
     import SlideGroups from "./tools/SlideGroups.svelte"
+    import ArrangementGroups from "../../church/ArrangementGroups.svelte"
 
     const tabs: TabsObj = {
         groups: { name: "tools.groups", icon: "groups" },
@@ -48,7 +49,8 @@
 
         {#if currentShow}
             {#if active === "groups"}
-                <SlideGroups />
+                <!-- FreeShow Church: expanded, draggable arrangement (original: <SlideGroups />) -->
+                <ArrangementGroups />
             {:else if active === "media"}
                 <div class="content">
                     <Media />

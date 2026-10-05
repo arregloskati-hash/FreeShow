@@ -25,6 +25,15 @@
 
 /* ---------- Canvas ---------- */
 
+/* the app window itself must never scroll (arrow keys would nudge the whole screen) */
+:root[data-ui="ember"],
+:root[data-ui="ember"] body,
+:root[data-ui="ember"] main,
+:root[data-ui="ember"] main > .column {
+    overflow: hidden !important;
+    overscroll-behavior: none;
+}
+
 :root[data-ui="ember"] body {
     background: #070403;
     -webkit-font-smoothing: antialiased;
@@ -212,8 +221,9 @@
 
 /* bottom drawer card */
 :root[data-ui="ember"] section.drawer {
-    margin: var(--ember-gap);
-    margin-top: 0;
+    margin: 0 var(--ember-gap) var(--ember-gap);
+    width: auto !important;
+    align-self: stretch;
     border-radius: var(--ember-radius);
     border: 1px solid var(--ember-line);
     background: var(--ember-card) !important;
