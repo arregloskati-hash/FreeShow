@@ -92,7 +92,9 @@
             const itemNeedsAutoSize = item.auto && !item.autoFontSize
 
             if (templateNeedsAutoSize || itemNeedsAutoSize) {
-                autoSizeDelay = 500
+                // FreeShow Church: was 500ms, which made template outputs (e.g. lower thirds) lag ~0.5s behind.
+                // Auto size is now measured within a couple of frames (see Textbox.svelte), so a short hold is enough.
+                autoSizeDelay = 60
                 outDelay = autoSizeDelay
                 if (!inDelay) inDelay = outDelay * 0.98
             }

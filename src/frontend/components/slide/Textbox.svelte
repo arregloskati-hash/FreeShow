@@ -423,14 +423,25 @@
             let prevWidth = itemElem.clientWidth
             let prevHeight = itemElem.clientHeight
             let attempts = 0
-            const maxAttempts = 20
+            // FreeShow Church: check layout once per animation frame instead of waiting 150ms+ up front
+            const maxAttempts = 10
             let totalWait = 0
-            const maxWait = 500
+            const maxWait = 160
+            // (setTimeout fallback: hidden NDI output windows may not fire animation frames)
+            const nextFrame = () =>
+                new Promise<number>((resolve) => {
+                    let done = false
+                    const finish = () => {
+                        if (done) return
+                        done = true
+                        resolve(16)
+                    }
+                    requestAnimationFrame(finish)
+                    setTimeout(finish, 20)
+                })
 
             while (attempts < maxAttempts && totalWait < maxWait) {
-                const waitTime = attempts === 0 ? 150 : attempts === 1 ? 50 : 20
-                await wait(waitTime)
-                totalWait += waitTime
+                totalWait += await nextFrame()
 
                 if (!itemElem) return
 

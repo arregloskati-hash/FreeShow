@@ -19,6 +19,8 @@
     import MaterialTextInput from "../../../inputs/MaterialTextInput.svelte"
     import MaterialToggleSwitch from "../../../inputs/MaterialToggleSwitch.svelte"
     import WebSearch from "./WebSearch.svelte"
+    import GroupTagger from "../../../../church/GroupTagger.svelte"
+    import { cleanWebLyrics } from "../../../../church/cleanLyrics"
 
     const changeValue = (e: any, key = "text") => {
         values[key] = e.target?.value || e.detail || ""
@@ -119,12 +121,15 @@
             values.name = data.title
         }
 
-        values.text = data.lyrics
+        // FreeShow Church: strip web page leftovers ("1 Contributor… Lyrics", "Embed", …)
+        values.text = cleanWebLyrics(data.lyrics)
 
+        // keep title/artist as show metadata, but out of the lyrics editor
         const metadata: string[] = []
         if (data.title) metadata.push(`Title=${data.title}`)
         if (data.artist) metadata.push(`Artist=${data.artist}`)
-        if (metadata.length) values.text = `${metadata.join("\n")}\n\n${values.text}`
+        hiddenMetadata = metadata
+        quickTextCache.set({ name: values.name, text: values.text })
 
         if (data.source) values.origin = data.source.toLowerCase()
         selectedOption = "text"
@@ -133,10 +138,13 @@
     // CREATE
 
     let showMore = false
+    let hiddenMetadata: string[] = []
 
     function textToShow() {
         let text = values.text
         if (typeof text !== "string") text = ""
+        if (hiddenMetadata.length && text.trim()) text = `${hiddenMetadata.join("\n")}\n\n${text}`
+        hiddenMetadata = []
 
         let sections = text.split("\n\n").filter((a) => a.length)
 
@@ -221,7 +229,15 @@
         {#if Number($splitLines)}<span class="state">{$splitLines}</span>{/if}
     </MaterialButton>
 
-    <MaterialTextarea label="create_show.quick_lyrics" placeholder={getQuickExample()} value={values.text} autofocus={!values.text} rows={showMore ? 6 : Math.max(6, Math.min(12, values.text.split("\n").length))} on:input={(e) => changeValue(e)} />
+    <div class="churchLyrics" class:showMore>
+        <GroupTagger text={values.text} on:change={(e) => changeValue({ detail: e.detail })} />
+
+        <MaterialTextarea label="create_show.quick_lyrics" placeholder={getQuickExample()} value={values.text} autofocus={!values.text} rows={showMore ? 10 : 24} on:input={(e) => changeValue(e)} />
+
+        {#if hiddenMetadata.length}
+            <p class="meta">{hiddenMetadata.map((m) => m.replace("=", ": ")).join("  ·  ")}</p>
+        {/if}
+    </div>
     <!-- WIP buttons for paste / format(remove chords, remove empty lines), etc. -->
 
     {#if showMore}
@@ -238,3 +254,27 @@
 {:else if selectedOption === "web"}
     <WebSearch query={values.name} on:update={updateLyrics} />
 {/if}
+
+<style>
+    /* FreeShow Church: roomy lyrics editor */
+    :global(.popup:has(.churchLyrics)) {
+        padding: 3vh 5vw !important;
+    }
+    :global(.popup:has(.churchLyrics) .card) {
+        width: min(1300px, 100%);
+    }
+    .churchLyrics :global(textarea) {
+        height: calc(100vh - 330px);
+        min-height: 260px;
+        resize: none;
+        line-height: 1.45;
+    }
+    .churchLyrics.showMore :global(textarea) {
+        height: calc(100vh - 520px);
+    }
+    .meta {
+        margin-top: 6px;
+        font-size: 0.75em;
+        opacity: 0.5;
+    }
+</style>
