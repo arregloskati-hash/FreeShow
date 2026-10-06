@@ -11,6 +11,7 @@
     import { formatText } from "./formatTextEditor"
     import { getPlainEditorText } from "./getTextEditor"
     import HighlightedNotes from "./tools/HighlightedNotes.svelte"
+    import GroupTagger from "../../church/GroupTagger.svelte"
 
     export let currentShow: Show | undefined
 
@@ -38,7 +39,24 @@
     $: showHasChords = Object.values(currentShow?.slides || {}).some((a) => a?.items?.some((a) => a.lines?.some((a) => a.chords)))
 </script>
 
-<HighlightedNotes class="context #editbox_text" disabled={isLocked} style="padding: 30px;padding-bottom: 60px;font-size: {$textEditZoom / 8}em;" placeholder={getQuickExample()} value={text} on:change={(e) => formatText(e.detail)} on:keydown={keydown} />
+<!-- FreeShow Church: group chips to tag stanzas, same as in "New show" -->
+<div class="churchTextEdit">
+    {#if !isLocked}
+        <div class="tagger">
+            <GroupTagger
+                {text}
+                textareaSelector=".churchTextEdit textarea"
+                on:change={(e) => {
+                    text = e.detail
+                    formatText(e.detail)
+                }}
+            />
+        </div>
+    {/if}
+    <div class="editorArea">
+        <HighlightedNotes class="context #editbox_text" disabled={isLocked} style="padding: 30px;padding-bottom: 60px;font-size: {$textEditZoom / 8}em;" placeholder={getQuickExample()} value={text} on:change={(e) => formatText(e.detail)} on:keydown={keydown} />
+    </div>
+</div>
 
 <FloatingInputs side="left">
     {#if showHasChords}
@@ -52,3 +70,20 @@
 
     <MaterialZoom hidden={showHasChords} columns={$textEditZoom / 10} min={0.5} max={2} defaultValue={1} addValue={-0.1} on:change={(e) => textEditZoom.set(e.detail * 10)} />
 </FloatingInputs>
+
+<style>
+    .churchTextEdit {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+    }
+    .churchTextEdit .tagger {
+        padding: 14px 30px 0;
+        border-bottom: 1px solid var(--primary-lighter);
+    }
+    .editorArea {
+        flex: 1;
+        min-height: 0;
+        display: flex;
+    }
+</style>

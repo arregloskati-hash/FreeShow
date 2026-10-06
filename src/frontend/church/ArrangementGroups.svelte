@@ -104,6 +104,21 @@
         saveLayout(layout)
     }
 
+    // duplicate a section right below itself (keeps its arrangement settings)
+    function duplicateEntry(index: number) {
+        if (!guard()) return
+        const entry = layoutSlides[index]
+        if (!entry) return
+        if (show?.slides?.[entry.id]?.locked) return newToast("output.state_locked")
+        const layout = clone(layoutSlides)
+        layout.splice(index + 1, 0, clone(entry))
+        saveLayout(layout)
+        highlighted = index + 1
+        setTimeout(() => {
+            if (highlighted === index + 1) highlighted = -1
+        }, 900)
+    }
+
     function removeEntry(index: number) {
         if (!guard()) return
         const layout = clone(layoutSlides)
@@ -150,7 +165,7 @@
 
     function pointerDown(e: PointerEvent, kind: "row" | "group", index?: number, group?: any) {
         if (e.button !== 0 || isLocked) return
-        if ((e.target as HTMLElement).closest(".remove")) return
+        if ((e.target as HTMLElement).closest(".remove, .duplicate")) return
         pending = { kind, index, group, x: e.clientX, y: e.clientY }
         window.addEventListener("pointermove", pointerMove)
         window.addEventListener("pointerup", pointerUp, { once: true })
@@ -257,6 +272,9 @@
                         <span class="preview">{getPreview(entry.id)}</span>
                     </span>
                     {#if !isLocked}
+                        <button class="duplicate" data-title="Duplicate this section below" on:click|stopPropagation={() => duplicateEntry(i)}>
+                            <Icon id="add" size={0.85} white />
+                        </button>
                         <button class="remove" data-title="Remove from arrangement" on:click|stopPropagation={() => removeEntry(i)}>
                             <Icon id="close" size={0.8} white />
                         </button>
@@ -449,6 +467,7 @@
     }
 
 
+    .duplicate,
     .remove {
         display: flex;
         align-items: center;
@@ -463,8 +482,13 @@
         opacity: 0;
         transition: opacity 0.15s;
     }
-    .row:hover .remove {
+    .row:hover .remove,
+    .row:hover .duplicate {
         opacity: 0.6;
+    }
+    .duplicate:hover {
+        opacity: 1 !important;
+        background: color-mix(in srgb, var(--group-color) 40%, transparent);
     }
     .remove:hover {
         opacity: 1 !important;
