@@ -18,6 +18,7 @@
     import EditboxChords from "./EditboxChords.svelte"
     import { EditboxHelper } from "./EditboxHelper"
     import { EditboxPaste } from "./EditboxPaste"
+    import { dynamicValuesToBadges, hasDynamicValues } from "../../../church/dynamicLabels"
 
     export let item: Item
     export let ref: {
@@ -55,6 +56,12 @@
     })
 
     onDestroy(cancelScheduledAutoSize)
+
+    // FreeShow Church: show {dynamic_values} as readable "⚡ Name" badges while the box isn't being typed in
+    let editFocused = false
+    $: badgeSourceHtml = item?.lines && !editFocused ? EditboxHelper.getStyleHtml(item, plain, "", ref.origin === "powerpoint").html : ""
+    $: showBadges = !chordsMode && !editFocused && hasDynamicValues(badgeSourceHtml)
+    $: badgeHtml = showBadges ? dynamicValuesToBadges(badgeSourceHtml) : ""
 
     // prevent certain updates during IME composition to prevent text deselecting and double-insertion.
     let composing = false
@@ -734,7 +741,7 @@
             </span>
         {/if}
         {#if isLocked}
-            <div class="edit">{@html html}</div>
+            <div class="edit">{@html hasDynamicValues(html) ? dynamicValuesToBadges(html) : html}</div>
         {:else}
             {#if chordsMode && textElem}
                 <EditboxChords {item} {autoSize} {index} {ref} {chordsMode} {chordsAction} />
@@ -744,8 +751,10 @@
                 on:mouseup={() => storeCurrentCaretPos()}
                 class="edit context {plain ? '#editbox_text' : '#edit_box__editbox_text'}"
                 class:hidden={chordsMode}
+                class:churchBadgeHidden={showBadges}
                 class:autoSize={isAuto && autoSize && !plain}
                 contenteditable
+                on:focus={() => (editFocused = true)}
                 on:keydown={textElemKeydown}
                 on:input={() => scheduleAutoSize()}
                 on:compositionstart={() => (composing = true)}
@@ -753,7 +762,10 @@
                     composing = false
                     scheduleAutoSize(true)
                 }}
-                on:blur={() => (composing = false)}
+                on:blur={() => {
+                    composing = false
+                    editFocused = false
+                }}
                 on:copy={handleCopy}
                 on:cut={handleCut}
                 bind:innerHTML={html}
@@ -761,6 +773,18 @@
                 class:height={item.lines?.length < 2 && !item.lines?.[0]?.text[0]?.value.length}
                 class:tallLines={chordsMode}
             />
+            {#if showBadges}
+                <!-- FreeShow Church: readable dynamic values (click the text to edit the real {codes}) -->
+                <div
+                    class="edit churchBadgeLayer"
+                    class:autoSize={isAuto && autoSize && !plain}
+                    aria-hidden="true"
+                    style="{isAuto && autoSize && !plain ? `--auto-size: ${autoSize}px;` : ''}{!plain ? lineStyleBox : ''}{plain ? '' : typeof item.align === 'string' ? item.align.replace('align-items', 'justify-content') : ''}"
+                    class:height={item.lines?.length < 2 && !item.lines?.[0]?.text[0]?.value.length}
+                >
+                    {@html badgeHtml}
+                </div>
+            {/if}
             <!-- this did not work on mac: -->
             <!-- on:paste|preventDefault={paste} -->
         {/if}
@@ -829,6 +853,37 @@
     }
     .edit.hidden {
         visibility: hidden;
+    }
+
+    /* FreeShow Church: dynamic value badges */
+    .edit.churchBadgeHidden {
+        opacity: 0;
+    }
+    .edit.churchBadgeLayer {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+    }
+    .align :global(.edit span.churchDynamicBadge.churchDynamicBadge) {
+        font-size: 0.8em !important;
+        display: inline;
+        line-height: inherit;
+        padding: 0 0.2em;
+        border-radius: 0.2em;
+        color: inherit;
+        background: rgb(255 140 40 / 0.18);
+        outline: 0.05em dashed rgb(255 150 60 / 0.9);
+        outline-offset: -0.02em;
+        box-decoration-break: clone;
+        -webkit-box-decoration-break: clone;
+        min-height: unset;
+    }
+    .align :global(.edit span.churchDynamicBadge span.churchDynamicBolt) {
+        font-size: 1em !important;
+        color: #ff8a1f;
+        margin-inline-end: 0.15em;
+        min-height: unset;
+        text-shadow: none;
     }
 
     .edit :global(.break) {

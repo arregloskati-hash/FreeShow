@@ -4,6 +4,7 @@
     import { translateText } from "../../../utils/language"
     import { clone, sortByName } from "../../helpers/array"
     import { getDynamicIds, getVariablesIds } from "../../helpers/showActions"
+    import { getDynamicLabel } from "../../../church/dynamicLabels"
     import MaterialDropdown from "../../inputs/MaterialDropdown.svelte"
     import MaterialNumberInput from "../../inputs/MaterialNumberInput.svelte"
     import MaterialTextInput from "../../inputs/MaterialTextInput.svelte"
@@ -77,7 +78,7 @@
         timer: [{ value: "", label: translateText("stage.first_active_timer") }, ...convertToOptions($timers)],
         variable: getVariables(),
         // , text.includes("{scripture") ? "scripture" : null
-        dynamicValue: getDynamicIds(true).map((a) => ({ value: a, label: a })),
+        dynamicValue: getDynamicIds(true).map((a) => ({ value: a, label: "⚡ " + getDynamicLabel(a) })), // FreeShow Church: readable names
         volume: channelNodesList
     }
     export function convertToOptions(object) {

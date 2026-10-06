@@ -1,4 +1,5 @@
 <script lang="ts">
+    import { getDynamicLabel } from "../../church/dynamicLabels"
     import { fade } from "svelte/transition"
     import { uid } from "uid"
     import type { StageItem } from "../../../types/Stage"
@@ -57,7 +58,7 @@
                             const value = replaceDynamicValues(dynamicId, ref).slice(0, 30)
                             return {
                                 id: dynamicId,
-                                label: dynamicId,
+                                label: "⚡ " + getDynamicLabel(id), // FreeShow Church: readable name
                                 icon: "",
                                 title: `<b>${dynamicId}</b><br>${value}`,
                                 data: value

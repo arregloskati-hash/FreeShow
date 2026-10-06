@@ -12,6 +12,7 @@
     import MaterialButton from "../../inputs/MaterialButton.svelte"
     import MaterialTextInput from "../../inputs/MaterialTextInput.svelte"
     import Center from "../../system/Center.svelte"
+    import { getDynamicLabel } from "../../../church/dynamicLabels"
 
     const obj = $popupData.obj || {}
     const caret = $popupData.caret || {}
@@ -107,7 +108,7 @@
         searchedValues = {
             search: Object.values(currentValuesList)
                 .flat()
-                .filter((a) => formatSearch(a.id).includes(searchValue))
+                .filter((a) => formatSearch(a.id).includes(searchValue) || formatSearch(getDynamicLabel(a.id).replaceAll(" ", "_")).includes(searchValue))
         }
 
         // previousSearchValue = searchValue
@@ -256,16 +257,12 @@
                                 {#if preview}{@html preview}{:else}—{/if}
                             </p>
 
-                            <p style="display: inline-flex;" data-title={value.id}>
-                                <span style="color: var(--secondary);">{"{"}</span>
-                                {#if value.id.startsWith("$")}
-                                    <span style="color: var(--secondary);">{"$"}</span>
-                                    {value.id.slice(1)}
-                                {:else}
-                                    {value.id}
-                                {/if}
-                                <span style="color: var(--secondary);">{"}"}</span>
+                            <!-- FreeShow Church: readable name, code below -->
+                            <p class="churchLabel" data-title={`{${value.id}}`}>
+                                <span class="bolt">⚡</span>
+                                {getDynamicLabel(value.id)}
                             </p>
+                            <p class="churchCode">{`{${value.id}}`}</p>
                         </div>
                     {/each}
                 </div>
@@ -283,6 +280,21 @@
 </div>
 
 <style>
+    .churchLabel {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        font-weight: 600;
+    }
+    .churchLabel .bolt {
+        color: #ffb347;
+    }
+    .churchCode {
+        font-size: 0.75em;
+        opacity: 0.45;
+        font-family: monospace;
+    }
+
     .list {
         display: flex;
         flex-direction: column;
