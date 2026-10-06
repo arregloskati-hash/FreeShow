@@ -1,4 +1,5 @@
 import { get } from "svelte/store"
+import { togglePlaylistView } from "../church/playlistView"
 import { OUTPUT } from "../../types/Channels"
 import { Main } from "../../types/IPC/Main"
 import type { ShowType } from "../../types/Show"
@@ -66,6 +67,8 @@ function openSettingsPage() {
 }
 
 const shiftCtrlKeys = {
+    // FreeShow Church: View > Continuous Playlist
+    l: () => togglePlaylistView(),
     d: () => (get(activePage) === "show" && get(activeShow) && (get(activeShow)?.type || "show") === "show" ? activePopup.set("next_timer") : ""),
     // t: () => activePopup.set("translate"),
     t: () => {

@@ -42,6 +42,7 @@ export const contextMenuItems: { [key: string]: ContextMenuItem } = {
     about: { label: "main.about", icon: "info" },
     // FreeShow Church: Settings menu
     church_settings: { label: "menu.settings", icon: "settings", shortcuts: ["Ctrl+,"] },
+    church_playlist_view: { label: "Continuous Playlist", icon: "playlist", shortcuts: ["Ctrl+Shift+L"] },
     church_settings_general: { label: "settings.general", icon: "general" },
     church_settings_display_settings: { label: "settings.display_settings", icon: "display_settings" },
     church_settings_styles: { label: "settings.styles", icon: "styles" },
@@ -245,7 +246,7 @@ export const contextMenuLayouts: { [key: string]: string[] } = {
     // MENU
     file: ["save", "import_more", "export_more", "SEPARATOR", "quit"],
     edit: ["undo", "redo", "history", "SEPARATOR", "cut", "copy", "paste", "delete", "SEPARATOR", "selectAll"], // , "cut"
-    view: ["focus_mode", "fullscreen"], // , "resetZoom", "zoomIn", "zoomOut"
+    view: ["church_playlist_view", "focus_mode", "fullscreen"], // , "resetZoom", "zoomIn", "zoomOut"
     // FreeShow Church: Settings menu (Windows/Linux menu bar)
     settings: ["church_settings", "SEPARATOR", "church_settings_general", "church_settings_display_settings", "church_settings_styles", "church_settings_audio", "church_settings_connection", "church_settings_files", "church_settings_profiles", "church_settings_theme", "church_settings_shortcuts", "church_settings_other"],
     help: ["quick_search", "shortcuts", "docs", "quick_start_guide", "about"],

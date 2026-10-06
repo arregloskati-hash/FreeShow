@@ -22,6 +22,7 @@
     import Section from "./Section.svelte"
     import ShowNotes from "./ShowNotes.svelte"
     import Slides from "./Slides.svelte"
+    import PlaylistView from "../../church/PlaylistView.svelte"
 
     $: show = $activeShow
 
@@ -31,6 +32,9 @@
     $: position = $projects[$activeProject || ""]?.shows?.findIndex((a) => a.id === show?.id)
 
     $: layoutId = show && (show.type || "show") === "show" ? $showsCache[show.id]?.settings?.activeLayout : null
+
+    // FreeShow Church: View > Continuous Playlist
+    $: playlistView = !!$special.churchPlaylistView && !!$projects[$activeProject || ""]?.shows?.some((a) => (a.type || "show") === "show")
 </script>
 
 <div class="double">
@@ -91,13 +95,19 @@
                     <FolderShow path={show.id} index={show.index || 0} />
                 {/key}
             {:else if (show.type || "show") === "show"}
-                <Slides showId={$activeShow?.id || ""} />
+                {#if playlistView}
+                    <PlaylistView />
+                {:else}
+                    <Slides showId={$activeShow?.id || ""} />
+                {/if}
                 <Layouts />
             {:else if show.type === "show_placeholder"}
                 <ProjectShowPlaceholder />
             {:else}
                 <p style="text-align: center;text-transform: capitalize;opacity: 0.8;">{show.type}</p>
             {/if}
+        {:else if playlistView}
+            <PlaylistView />
         {:else}
             <Splash />
         {/if}

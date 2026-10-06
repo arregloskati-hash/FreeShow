@@ -342,12 +342,43 @@ export class OutputLifecycle {
 
         // FreeShow Church: if the output's page crashes (GPU/driver hiccup, out of memory), reload it instead of
         // leaving a frozen or black output for the rest of the service
-        window.webContents.on("render-process-gone", (_e, details) => {
-            if (details?.reason === "clean-exit") return
-            console.error(`Output ${name || id} crashed (${details?.reason}), reloading`)
+        // (at most 3 automatic reloads per minute, so a page that keeps crashing can't flood the app with reloads)
+        const recentReloads: number[] = []
+        const reloadOutput = (reason: string) => {
+            const now = Date.now()
+            while (recentReloads.length && now - recentReloads[0] > 60000) recentReloads.shift()
+            if (recentReloads.length >= 3) {
+                console.error(`Output ${name || id} keeps failing (${reason}) - not reloading again for now`)
+                return
+            }
+            recentReloads.push(now)
+            console.error(`Output ${name || id} ${reason}, reloading`)
             setTimeout(() => {
                 if (!window.isDestroyed()) window.webContents.reload()
             }, 300)
+        }
+
+        window.webContents.on("render-process-gone", (_e, details) => {
+            if (details?.reason === "clean-exit") return
+            reloadOutput(`crashed (${details?.reason})`)
+        })
+
+        // a hung output page (e.g. too heavy content at a very large resolution): reload it if it stays stuck
+        let unresponsiveTimer: NodeJS.Timeout | null = null
+        window.on("unresponsive", () => {
+            if (unresponsiveTimer) return
+            unresponsiveTimer = setTimeout(() => {
+                unresponsiveTimer = null
+                if (!window.isDestroyed()) reloadOutput("stopped responding")
+            }, 8000)
+        })
+        window.on("responsive", () => {
+            if (unresponsiveTimer) clearTimeout(unresponsiveTimer)
+            unresponsiveTimer = null
+        })
+        window.on("closed", () => {
+            if (unresponsiveTimer) clearTimeout(unresponsiveTimer)
+            unresponsiveTimer = null
         })
     }
 

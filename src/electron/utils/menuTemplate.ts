@@ -53,6 +53,8 @@ export function template(strings: Dictionary): any {
         label: strings.titlebar?.view || "View",
         submenu: [
             ...(isProd ? [] : [{ role: "reload" }, { role: "toggleDevTools" }, { type: "separator" }]),
+            // FreeShow Church: every song of the project in one list
+            { label: "Continuous Playlist", accelerator: "CmdOrCtrl+Shift+L", registerAccelerator: false, click: () => mc("church_playlist_view") },
             { label: strings.actions?.focus_mode || "Toggle Focus mode", click: () => mc("focus_mode") }, // , accelerator: "CmdOrCtrl+Shift+F"
             ...(isMac ? [] : [{ label: strings.actions?.fullscreen || "Toggle Fullscreen", role: "togglefullscreen" }])
             // { label: lang.actions?.resetZoom || "Reset Zoom", role: "resetZoom" },

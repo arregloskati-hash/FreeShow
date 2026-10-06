@@ -21,10 +21,13 @@
     import Center from "../system/Center.svelte"
     import DropArea from "../system/DropArea.svelte"
     import ShowHeader from "./ShowHeader.svelte"
+    import TransitionBar from "../../church/TransitionBar.svelte"
 
     export let showId: string
     export let layout = ""
     export let projectIndex = -1
+    // FreeShow Church: used by the continuous playlist (it has its own song headers)
+    export let hideHeader = false
 
     $: currentShow = $showsCache[showId]
     $: activeLayout = layout || $showsCache[showId]?.settings?.activeLayout
@@ -487,8 +490,10 @@
     <Autoscroll class={$focusMode || isLocked ? "" : "context #shows__close"} {offset} disabled={disableAutoScroll} {shouldSkipSmooth} bind:scrollElem style="display: flex;">
         <DropArea id="all_slides" selectChildren>
             <DropArea id="slides" hoverTimeout={0} selectChildren>
-                {#if !$focusMode}
+                {#if !$focusMode && !hideHeader}
                     <ShowHeader {showId} hideOptions={!layoutSlides?.length} />
+                    <!-- FreeShow Church: live slide transition -->
+                    {#if $showsCache[showId] && $special.churchTransitionBar !== false}<TransitionBar />{/if}
                 {/if}
 
                 {#if $showsCache[showId] === undefined}

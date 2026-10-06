@@ -1,4 +1,5 @@
 import { get } from "svelte/store"
+import { togglePlaylistView } from "../../church/playlistView"
 import { uid } from "uid"
 import { EXPORT, OUTPUT } from "../../../types/Channels"
 import type { HistoryPages } from "../../../types/History"
@@ -260,6 +261,7 @@ const clickActions = {
     about: () => activePopup.set("about"),
     // FreeShow Church: menu bar "Settings" (Cmd/Ctrl + ,) — unless settings are locked for this profile
     church_settings: () => openChurchSettings(),
+    church_playlist_view: () => togglePlaylistView(),
     ...Object.fromEntries(CHURCH_SETTINGS_TABS.map((tab) => ["church_settings_" + tab, () => openChurchSettings(tab)])),
     quick_search: () => quickSearchActive.set(true),
     quick_start_guide: () => guideActive.set(true),
