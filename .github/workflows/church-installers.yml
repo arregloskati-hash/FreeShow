@@ -1,0 +1,98 @@
+# FreeShow Church: builds the Mac (Apple Silicon + Intel) and Windows installers and publishes them
+# as a GitHub Release. Runs when church/INSTALLER_VERSION changes on the "church" branch (or by hand).
+name: Church installers
+
+on:
+  push:
+    branches: [church]
+    paths: [church/INSTALLER_VERSION]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    name: Windows installer
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        run: npm ci
+      - name: Build
+        run: npm run build
+      - name: Package installer
+        run: npx electron-builder --config church/electron-builder.installer.js --win nsis --x64 --publish never
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: dist/*.exe
+          if-no-files-found: error
+
+  mac:
+    name: Mac installers
+    runs-on: macos-latest
+    env:
+      CSC_IDENTITY_AUTO_DISCOVERY: "false"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: npm ci
+      - name: Build
+        run: npm run build
+      - name: Package apps and DMGs
+        shell: bash
+        run: |
+          set -e
+          VERSION="$(cat church/INSTALLER_VERSION)"
+          mkdir -p out
+          for ARCH in arm64 x64; do
+            rm -rf dist
+            npx electron-builder --config church/electron-builder.installer.js --mac dir --$ARCH --publish never
+            APP="$(ls -d dist/mac*/FreeShow.app | head -1)"
+            STAGE="stage-$ARCH"
+            rm -rf "$STAGE" && mkdir "$STAGE"
+            ditto "$APP" "$STAGE/FreeShow Church.app"
+            # ad-hoc signature so macOS (and Apple Silicon) will run it
+            codesign --force --deep --sign - "$STAGE/FreeShow Church.app"
+            ln -s /Applications "$STAGE/Applications"
+            NAME="Apple-Silicon"; [ "$ARCH" = "x64" ] && NAME="Intel"
+            hdiutil create -volname "FreeShow Church" -srcfolder "$STAGE" -ov -format UDZO "out/FreeShow-Church-$VERSION-Mac-$NAME.dmg"
+          done
+          ls -la out
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mac
+          path: out/*.dmg
+          if-no-files-found: error
+
+  release:
+    name: Publish release
+    needs: [windows, mac]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: installers
+      - name: Read version
+        id: v
+        run: echo "version=$(cat church/INSTALLER_VERSION)" >> "$GITHUB_OUTPUT"
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: church-v${{ steps.v.outputs.version }}
+          name: FreeShow Church ${{ steps.v.outputs.version }}
+          target_commitish: ${{ github.sha }}
+          body_path: church/INSTALL.md
+          files: |
+            installers/windows/*.exe
+            installers/mac/*.dmg
