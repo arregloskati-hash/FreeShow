@@ -91,7 +91,16 @@ import Variable from "../components/main/popups/Variable.svelte"
 import NodeOptions from "../components/main/popups/NodeOptions.svelte"
 import { activePopup, popupData } from "../stores"
 
-export const popups: { [key in Popups]: ComponentType } = {
+// FreeShow Church: built on first use, not when this file loads. Many popups import modules that (indirectly)
+// import this file again; building the table during that import cycle could hit a popup that isn't ready yet
+// ("Cannot access 'DynamicValues' before initialization") and stop the whole app from working.
+let popupsCache: { [key in Popups]: ComponentType } | null = null
+export function getPopups(): { [key in Popups]: ComponentType } {
+    if (!popupsCache) popupsCache = createPopups()
+    return popupsCache
+}
+
+const createPopups = (): { [key in Popups]: ComponentType } => ({
     initialize: Initialize,
     confirm: Confirm,
     custom_text: CustomText,
@@ -180,7 +189,7 @@ export const popups: { [key in Popups]: ComponentType } = {
     pco_picker: PcoServicePicker,
     sync_folders: SyncFolders,
     node_options: NodeOptions
-}
+})
 
 export function waitForPopupData(popupId: Popups): Promise<any> {
     const promise = new Promise((resolve) => {

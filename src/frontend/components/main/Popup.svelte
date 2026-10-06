@@ -3,7 +3,7 @@
     import type { Popups } from "../../../types/Main"
     import { activePopup, alertMessage, os, popupData, special } from "../../stores"
     import { MENU_BAR_HEIGHT } from "../../utils/common"
-    import { popups } from "../../utils/popup"
+    import { getPopups } from "../../utils/popup"
     import { disablePopupClose } from "../../utils/shortcuts"
     import T from "../helpers/T.svelte"
     import MaterialButton from "../inputs/MaterialButton.svelte"
@@ -72,7 +72,7 @@
                 {/if}
                 <div class="scroll" style="--top-height: {isWindows ? MENU_BAR_HEIGHT : 0}px;" on:scroll={scroll}>
                     <div class="body">
-                        <svelte:component this={popups[popupId]} />
+                        <svelte:component this={getPopups()[popupId]} />
                     </div>
                 </div>
             </div>

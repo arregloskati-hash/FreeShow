@@ -24,7 +24,9 @@
 @font-face {
     font-family: NotoColorEmojiLimited;
     unicode-range: U+1F1E6-1F1FF;
-    src: url("https://raw.githack.com/googlefonts/noto-emoji/main/fonts/NotoColorEmoji.ttf");
+    /* FreeShow Church: the old download link (raw.githack.com/.../NotoColorEmoji.ttf) no longer exists (404 on every start),
+       use the computer's own emoji font instead */
+    src: local("Apple Color Emoji"), local("Noto Color Emoji"), local("Segoe UI Emoji");
 }
 
 :root {
