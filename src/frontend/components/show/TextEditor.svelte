@@ -16,7 +16,18 @@
     export let currentShow: Show | undefined
 
     let text = ""
-    $: if (currentShow) text = getPlainEditorText()
+    // FreeShow Church: remember the last text applied, so leaving the editor without changes
+    // doesn't rebuild the song (and add an extra undo step that makes Undo seem to do nothing)
+    let lastApplied = ""
+    $: if (currentShow) {
+        text = getPlainEditorText()
+        lastApplied = text
+    }
+    function applyText(newText: string) {
+        if (newText === lastApplied) return
+        lastApplied = newText
+        formatText(newText)
+    }
 
     $: hasLockedSlide = Object.values(currentShow?.slides || {}).some((a) => a?.locked)
     $: isLocked = currentShow?.locked || hasLockedSlide
@@ -46,15 +57,16 @@
             <GroupTagger
                 {text}
                 textareaSelector=".churchTextEdit textarea"
+                slideMode
                 on:change={(e) => {
                     text = e.detail
-                    formatText(e.detail)
+                    applyText(e.detail)
                 }}
             />
         </div>
     {/if}
     <div class="editorArea">
-        <HighlightedNotes class="context #editbox_text" disabled={isLocked} style="padding: 30px;padding-bottom: 60px;font-size: {$textEditZoom / 8}em;" placeholder={getQuickExample()} value={text} on:change={(e) => formatText(e.detail)} on:keydown={keydown} />
+        <HighlightedNotes class="context #editbox_text" disabled={isLocked} style="padding: 30px;padding-bottom: 60px;font-size: {$textEditZoom / 8}em;" placeholder={getQuickExample()} value={text} on:change={(e) => applyText(e.detail)} on:keydown={keydown} />
     </div>
 </div>
 

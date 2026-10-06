@@ -53,9 +53,34 @@
 
     // ---- row data ----
 
+    // numbers ("Verse 1", "Verse 2") worked out from the show itself, so they're right
+    // straight away after undo/redo (the shared cache can lag behind)
+    $: numberedNames = getNumberedNames(show, layoutSlides)
+    function getNumberedNames(currentShow: any, ref: any[]) {
+        const names: Record<string, string> = {}
+        const slides = currentShow?.slides || {}
+        const order: string[] = []
+        ref.forEach((s) => {
+            if (s?.id && slides[s.id] && !order.includes(s.id)) order.push(s.id)
+        })
+        Object.keys(slides).forEach((id) => {
+            if (slides[id]?.group !== undefined && slides[id]?.group !== null && !order.includes(id)) order.push(id)
+        })
+        const byName: Record<string, string[]> = {}
+        order.forEach((id) => {
+            const base = String(slides[id]?.group || "").trim()
+            if (!base) return
+            ;(byName[base] = byName[base] || []).push(id)
+        })
+        Object.entries(byName).forEach(([base, ids]) => {
+            ids.forEach((id, i) => (names[id] = ids.length > 1 ? `${base} ${i + 1}` : base))
+        })
+        return names
+    }
+
     function getName(slideId: string) {
         const slide = show?.slides?.[slideId]
-        return groupInfo[slideId]?.group || slide?.group || "—"
+        return numberedNames[slideId] || groupInfo[slideId]?.group || slide?.group || "—"
     }
     function getColor(slideId: string) {
         const slide = show?.slides?.[slideId]
@@ -268,7 +293,7 @@
                     <span class="handle"><svg width="10" height="16" viewBox="0 0 10 16" fill="currentColor"><circle cx="2" cy="3" r="1.5" /><circle cx="8" cy="3" r="1.5" /><circle cx="2" cy="8" r="1.5" /><circle cx="8" cy="8" r="1.5" /><circle cx="2" cy="13" r="1.5" /><circle cx="8" cy="13" r="1.5" /></svg></span>
                     <span class="number">{i + 1}</span>
                     <span class="text">
-                        <span class="name">{getName(entry.id)}</span>
+                        <span class="name">{numberedNames[entry.id] || getName(entry.id)}</span>
                         <span class="preview">{getPreview(entry.id)}</span>
                     </span>
                     {#if !isLocked}

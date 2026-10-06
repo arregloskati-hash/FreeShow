@@ -12,6 +12,8 @@
 
     export let text = ""
     export let textareaSelector = ".churchLyrics textarea"
+    // "Text edit" mode: blocks are slides, and a slide without a label belongs to the group above it
+    export let slideMode = false
 
     const dispatch = createEventDispatcher()
 
@@ -124,6 +126,15 @@
     }
 
     $: taggedCount = stanzas.filter((s) => s.label).length
+    // the group the current block belongs to (in slide mode: nearest label at or above it)
+    $: currentGroup = getCurrentGroup(stanzas, currentIndex)
+    function getCurrentGroup(list: Stanza[], index: number) {
+        if (index < 0) return ""
+        if (!slideMode) return list[index]?.label || ""
+        for (let i = index; i >= 0; i--) if (list[i]?.label) return list[i].label
+        return ""
+    }
+    $: unit = slideMode ? "Slide" : "Stanza"
 </script>
 
 <div class="tagger">
@@ -132,19 +143,23 @@
         {#if stanzas.length}
             <span class="status">
                 <button class="nav" disabled={currentIndex <= 0} on:mousedown|preventDefault on:click={() => goTo(currentIndex - 1)}>‹</button>
-                Stanza {currentIndex + 1} of {stanzas.length}
+                {unit} {currentIndex + 1} of {stanzas.length}
                 <button class="nav" disabled={currentIndex >= stanzas.length - 1} on:mousedown|preventDefault on:click={() => goTo(currentIndex + 1)}>›</button>
                 <span class="preview">{stanzas[currentIndex]?.preview || ""}</span>
-                <span class="count">{taggedCount}/{stanzas.length} tagged</span>
+                {#if slideMode}
+                    {#if currentGroup}<span class="count">in {currentGroup}</span>{/if}
+                {:else}
+                    <span class="count">{taggedCount}/{stanzas.length} tagged</span>
+                {/if}
             </span>
         {:else}
-            <span class="status">Paste or type lyrics, then click a group for each stanza</span>
+            <span class="status">{slideMode ? "Put the cursor on a slide, then click a group to start that section" : "Paste or type lyrics, then click a group for each stanza"}</span>
         {/if}
     </div>
 
     <div class="chips">
         {#each groupList as group (group.id)}
-            {@const isCurrent = stanzas[currentIndex]?.label?.toLowerCase() === group.name.toLowerCase()}
+            {@const isCurrent = currentGroup.toLowerCase().replace(/\s*\d+$/, "") === group.name.toLowerCase()}
             <button class="chip" class:isCurrent style="--group-color: {group.color};" disabled={!stanzas.length} on:mousedown|preventDefault on:click={() => tag(group.name)} data-title="Tag the current stanza as {group.name}">
                 {group.name}
             </button>
