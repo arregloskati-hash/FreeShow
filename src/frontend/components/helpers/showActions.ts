@@ -1213,19 +1213,20 @@ const dynamicValues = {
         const groupColor = show?.slides?.[ref[parentIndex]?.id]?.color || ""
         return groupColor
     }, // DEPRECATED
+    // FreeShow Church: "upcoming" = the group of the next slide that has text (the text shown as "next"),
+    // so it stays the current group until the group actually changes
     slide_group_upcoming: ({ show, ref, slideIndex, outSlide }) => {
-        if (slideIndex < 0) return ""
-        let nextParentIndex = slideIndex + 1
-        while (ref[nextParentIndex]?.type !== "parent" && nextParentIndex < ref.length) nextParentIndex++
-        const group = show?.slides?.[ref[nextParentIndex]?.id]?.group || ""
-        return getGroupName({ show, showId: outSlide?.id }, ref[nextParentIndex]?.id, group, nextParentIndex, false, false)
+        const nextIndex = getNextTextSlideIndex({ show, ref, slideIndex, outSlide })
+        if (nextIndex < 0) return ""
+        const parentIndex = ref[nextIndex]?.parent?.layoutIndex ?? nextIndex
+        const group = show?.slides?.[ref[parentIndex]?.id]?.group || ""
+        return getGroupName({ show, showId: outSlide?.id }, ref[parentIndex]?.id, group, parentIndex, false, false)
     },
-    slide_group_upcoming_color: ({ show, ref, slideIndex }) => {
-        if (slideIndex < 0) return ""
-        let nextParentIndex = slideIndex + 1
-        while (ref[nextParentIndex]?.type !== "parent" && nextParentIndex < ref.length) nextParentIndex++
-        const groupColor = show?.slides?.[ref[nextParentIndex]?.id]?.color || ""
-        return groupColor
+    slide_group_upcoming_color: ({ show, ref, slideIndex, outSlide }) => {
+        const nextIndex = getNextTextSlideIndex({ show, ref, slideIndex, outSlide })
+        if (nextIndex < 0) return ""
+        const parentIndex = ref[nextIndex]?.parent?.layoutIndex ?? nextIndex
+        return show?.slides?.[ref[parentIndex]?.id]?.color || ""
     },
     slide_notes: ({ show, ref, slideIndex, offset }) => show?.slides?.[ref[slideIndex + offset]?.id]?.notes || "",
     slide_notes_next: ({ show, ref, slideIndex }) => show?.slides?.[ref[slideIndex + 1]?.id]?.notes || "", // DEPRECATED
@@ -1357,6 +1358,17 @@ export function getGroupText({ outSlide, show, ref, slideIndex }, groupOffset: n
 
     // return [text, ...slidesText]
     return mergedText
+}
+
+// FreeShow Church: index of the next slide (after the current one) that has any text, or -1 at the end
+function getNextTextSlideIndex({ show, ref, slideIndex, outSlide }): number {
+    if (slideIndex < 0 || !Array.isArray(ref)) return -1
+    for (let i = slideIndex + 1; i < ref.length; i++) {
+        if (ref[i]?.data?.disabled) continue
+        const text = getSlideText({ outSlide, show, ref }, i)[0] || ""
+        if (text.replace(/<[^>]*>/g, "").trim()) return i
+    }
+    return -1
 }
 
 function getSlideText({ outSlide, show, ref }, slideIndex: number = 0) {
