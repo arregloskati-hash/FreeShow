@@ -167,8 +167,10 @@
 
         // don't refresh content unless it changes
         let newCurrentSlide = getCurrentSlide()
-        const newSlideFormatStr = JSON.stringify(formatSlide(newCurrentSlide))
-        const curSlideStr = JSON.stringify(currentSlide)
+        // FreeShow Church: ignore saved auto-size numbers (written by thumbnails/previews), they don't change what's shown
+        const ignoreSizes = (key: string, v: any) => (key === "autoFontSize" || key === "previewAutoFontSize" ? undefined : v)
+        const newSlideFormatStr = JSON.stringify(formatSlide(newCurrentSlide), ignoreSizes)
+        const curSlideStr = JSON.stringify(currentSlide, ignoreSizes)
         if (newSlideFormatStr !== curSlideStr) currentSlide = newCurrentSlide
 
         function getCurrentSlide() {

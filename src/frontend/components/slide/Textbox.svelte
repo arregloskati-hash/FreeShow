@@ -311,6 +311,14 @@
                 // Keep existing fontSize on stage to prevent flicker during drag
             } else if (willHide) {
                 fontSize = 0
+            } else if (preview && autoSizeKey) {
+                // FreeShow Church: output preview (e.g. lower thirds): use this output's own measured size,
+                // or measure right away before it's painted, instead of the slide's size for another layout
+                const cacheKey = buildAutoSizeCacheKey()
+                const cached = cacheKey ? readAutoSizeCache(cacheKey) : undefined
+                const matches = !!cached && cached.signature === buildAutoSizeSignature(undefined, undefined, chords)
+                fontSize = cached?.fontSize || item?.previewAutoFontSize || item?.autoFontSize || 100
+                if (!matches) needsSyncMeasure = true
             } else if (preview) {
                 fontSize = item?.previewAutoFontSize || item?.autoFontSize || 100
             } else {
@@ -318,11 +326,20 @@
                 const cacheKey = buildAutoSizeCacheKey()
                 const cached = cacheKey ? readAutoSizeCache(cacheKey) : undefined
                 fontSize = cached?.fontSize || item?.autoFontSize || 0
+                // FreeShow Church: the size we have is for other text (e.g. stepping faster than the
+                // pre-measure): measure this text right after it's created, before it is ever painted
+                if ($currentWindow === "output" && !(cached && cached.signature === buildAutoSizeSignature(undefined, undefined, chords))) needsSyncMeasure = true
             }
 
             hideUntilAutosized = willHide
         }
     }
+    let needsSyncMeasure = false
+    $: if (needsSyncMeasure && itemElem) {
+        needsSyncMeasure = false
+        calculateAutosize(true)
+    }
+
     let prevAutosizeSignature = ""
     $: autosizeSignature = `${isStage ? stageItem?.style || "" : item?.style || ""}_${resolvedTemplateId}_${chordLines ? 1 : 0}_${stageAutoSize ? 1 : 0}_${item?.textFit || ""}_${stageItem?.textFit || ""}_${JSON.stringify(item?.lines || stageItem?.lines || "")}_${ratio}`
 
@@ -392,7 +409,7 @@
     }
     $: customTypeRatio = deriveCustomTypeRatio()
 
-    async function calculateAutosize() {
+    async function calculateAutosize(sync = false) {
         if (item.type === "media" || item.type === "camera" || item.type === "icon") return
         if (isStage && !stageAutoSize) {
             return
@@ -428,11 +445,12 @@
         }
 
         // Wait for DOM to update with new template styles before measuring
-        await tick()
+        // (FreeShow Church: "sync" measures immediately, so it finishes before the next paint)
+        if (!sync) await tick()
 
         // Wait for CSS styles to fully cascade and layout to stabilize before measuring (only needed for output window)
         const isOutputContext = ratio < 0.5 && !preview && !isStage
-        if (isOutputContext && itemElem) {
+        if (!sync && isOutputContext && itemElem) {
             let prevWidth = itemElem.clientWidth
             let prevHeight = itemElem.clientHeight
             let attempts = 0
@@ -574,7 +592,8 @@
         if (!autoSizeKey && !ref?.id) return ""
         const base = autoSizeKey || `${ref?.id || ""}-${item?.id || itemIndex}`
         const target = isStage ? "stage" : ref?.type || "show"
-        return `${target}:${base}`
+        // FreeShow Church: keep each output (and its preview) apart, they can use different templates/sizes
+        return `${target}:${outputId || ""}:${preview ? "p" : "o"}:${base}`
     }
 
     // capture the bits of state that influence autosize outcomes for cache invalidation
@@ -660,6 +679,8 @@
 
     function setItemAutoFontSize(fontSize) {
         if (isStage || itemIndex < 0 || $currentWindow || ref.showId === "temp") return
+        // FreeShow Church: output previews measure with the output's template, that size isn't the slide's own
+        if (autoSizeKey && preview && outputStyle?.template) return
 
         if (ref.type === "overlay") {
             const currentOverlays = $overlays
@@ -689,6 +710,7 @@
     }
 
     function setItemPreviewAutoFontSize(fontSize) {
+        if (autoSizeKey && preview && outputStyle?.template) return
         if (isStage || itemIndex < 0 || $currentWindow || ref.showId === "temp") return
 
         if (ref.type === "overlay") {

@@ -141,6 +141,17 @@ export class CaptureLifecycle {
         // const output = OutputHelper.getOutput(id)
         // const targetBounds = output.intendedBounds
 
+        // FreeShow Church: every frame must have the output's configured size. Occasionally a frame of a
+        // hidden (HiDPI) output window comes back at another pixel size, and NDI/stream receivers then
+        // rescale that single frame, which shows as a quick "scale" glitch when changing slides.
+        if (!captureOpts.options?.blackmagic && OutputHelper.getOutput(id)?.invisible) {
+            const intended = OutputHelper.getOutput(id)?.intendedBounds
+            const currentSize = image.getSize()
+            if (intended?.width && intended?.height && currentSize.width && (currentSize.width !== intended.width || currentSize.height !== intended.height)) {
+                image = image.resize({ width: intended.width, height: intended.height, quality: "good" })
+            }
+        }
+
         // Blackmagic only - resize if needed
         if (captureOpts.options?.blackmagic) {
             const targetSize = BlackmagicSender.getTargetDimensions(id)

@@ -65,14 +65,22 @@
         return true
     }
 
+    // FreeShow Church: saved auto-size numbers are bookkeeping written by other windows (thumbnails/previews);
+    // they must not count as a "change", or the slide already on screen is rebuilt and visibly jumps
+    function contentKey(value: any) {
+        return JSON.stringify(value, (key, v) => (key === "autoFontSize" || key === "previewAutoFontSize" ? undefined : v))
+    }
+
     // Compare two items to see if their visible content is identical
     function itemsAreEqual(oldItem: Item | undefined, newItem: Item | undefined): boolean {
         if (!oldItem || !newItem) return false
         // Compare the full serialized content (lines, style, etc.)
-        return JSON.stringify(oldItem) === JSON.stringify(newItem)
+        return contentKey(oldItem) === contentKey(newItem)
     }
     // maintain a hidden workload that primes autosize results ahead of the visible reveal
-    let precomputeTargets: { item: Item; index: number; key: string }[] = []
+    let precomputeTargets: { item: Item; index: number; key: string; run: number }[] = []
+    // FreeShow Church: a fresh hidden textbox for every slide (reusing one could leave it "already ready" and stall)
+    let precomputeRun = 0
     let precomputePending = new Set<string>()
 
     const showItemRef = { outputId, slideIndex: outSlide?.index }
@@ -112,7 +120,7 @@
     // only update if changed (no update when another output changes)
     let currentSlideItems: Item[] | null = null
     $: if (currentSlide?.items !== 0) {
-        if (JSON.stringify(currentSlide?.items) !== JSON.stringify(currentSlideItems)) currentSlideItems = clone(currentSlide?.items || null)
+        if (contentKey(currentSlide?.items) !== contentKey(currentSlideItems)) currentSlideItems = clone(currentSlide?.items || null)
     }
     $: if (current && outSlide) {
         if (current.outSlide) {
@@ -149,7 +157,8 @@
             return
         }
 
-        const targets: { item: Item; index: number; key: string }[] = []
+        const targets: { item: Item; index: number; key: string; run: number }[] = []
+        const run = ++precomputeRun
         const pendingKeys = new Set<string>()
 
         items.forEach((item, index) => {
@@ -160,7 +169,7 @@
             // style template, so only trust it when no template is involved
             if (item.autoFontSize && !hasStyleTemplate) return
             pendingKeys.add(key)
-            targets.push({ item: clone(item), index, key })
+            targets.push({ item: clone(item), index, key, run })
         })
 
         precomputeTargets = targets
@@ -499,7 +508,7 @@
 
 {#if precomputeTargets.length}
     <div class="autosize-precompute" aria-hidden="true">
-        {#each precomputeTargets as target (target.key)}
+        {#each precomputeTargets as target (target.key + "|" + target.run)}
             <Textbox item={target.item} {ratio} {outputId} outputStyle={currentStyle} {mirror} {preview} {styleIdOverride} ref={{ type: "show", showId: outSlide?.id, slideId: currentSlide?.id, id: currentSlide?.id || "", layoutId: outSlide?.layout }} autoSizeKey={target.key} on:autosizeReady={handlePrecomputeReady} updateDynamicValues={!isClearing} />
         {/each}
     </div>
