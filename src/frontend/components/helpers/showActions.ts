@@ -282,7 +282,10 @@ function randomNumber(end: number) {
 export function updateOut(showId: string, index: number, layout: LayoutRef[], extra = true, specificOutputId = "", actionTimeout = 10) {
     if (get(activePage) !== "edit") activeEdit.set({ slide: index, items: [] })
 
-    _show(showId).set({ key: "timestamps.used", value: new Date().getTime() })
+    // FreeShow Church: "last used" only needs to be roughly right; updating it on every slide change
+    // re-sends all show data to the output windows while stepping through slides
+    const lastUsed = Number(_show(showId).get("timestamps.used") || 0)
+    if (Date.now() - lastUsed > 60000) _show(showId).set({ key: "timestamps.used", value: new Date().getTime() })
     if (!layout) return
     const data = layout[index]?.data
 

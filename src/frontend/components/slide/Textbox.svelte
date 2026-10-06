@@ -349,7 +349,16 @@
     $: currentShowTemplateId = $showsCache[ref.showId || ""]?.settings?.template || ""
     $: outputSlide = getFirstActiveOutput($outputs)?.out?.slide
     $: if (item?.type === "slide_tracker" && outputSlide) debouncedCalculateAutosize(50) // overlay progress update
-    $: if ($currentWindow === "output" && outputStyle?.template && outputStyle.template !== currentShowTemplateId && !stageAutoSize) calculateAutosize()
+    // FreeShow Church: only re-measure when the templates actually change, not on every shows data refresh
+    // (that refresh happens while stepping slides and caused a one-frame "scale" glitch on lower thirds)
+    let lastTemplatePair = ""
+    $: if ($currentWindow === "output" && outputStyle?.template && outputStyle.template !== currentShowTemplateId && !stageAutoSize) {
+        const pair = `${outputStyle.template}|${currentShowTemplateId}`
+        if (pair !== lastTemplatePair) {
+            lastTemplatePair = pair
+            calculateAutosize()
+        }
+    }
     // else outputTemplateAutoSize = false
 
     // $: fontSizeValue = stageAutoSize || item.auto || outputTemplateAutoSize ? fontSize : fontSize
