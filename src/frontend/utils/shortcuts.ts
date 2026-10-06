@@ -159,7 +159,10 @@ export function keydown(e: KeyboardEvent) {
 
         // allow custom shortcuts through main display (could be useful in some cases when you need output over the main app)
         const allowThroughWindow = ["Escape", "ArrowRight", "ArrowLeft", " ", "PageDown", "PageUp", "Home", "End", ".", "F1", "F2", "F3", "F4", "F5"]
-        if (allowThroughWindow.includes(e.key)) send(OUTPUT, ["MAIN_SHORTCUT"], { key: e.key, ctrlKey: e.ctrlKey, metaKey: e.metaKey, altKey: e.altKey })
+        // FreeShow Church: other keys are forwarded too, for custom shortcuts (Settings > Shortcuts) only
+        const keyData = { key: e.key, code: e.code, ctrlKey: e.ctrlKey, metaKey: e.metaKey, altKey: e.altKey, shiftKey: e.shiftKey }
+        if (allowThroughWindow.includes(e.key)) send(OUTPUT, ["MAIN_SHORTCUT"], keyData)
+        else send(OUTPUT, ["MAIN_SHORTCUT"], { ...keyData, churchOnly: true })
 
         return
     }
@@ -180,6 +183,7 @@ export function keydown(e: KeyboardEvent) {
     }
 
     if (e.ctrlKey || e.metaKey) {
+        if ((e as any).churchShortcutBlocked) return // FreeShow Church: removed in Settings > Shortcuts
         const drawerMenus = Object.keys(drawerTabs) as DrawerTabIds[]
         if (document.activeElement === document.body && Object.keys(drawerMenus).includes((Number(e.key) - 1).toString())) {
             activeDrawerTab.set(drawerMenus[Number(e.key) - 1])

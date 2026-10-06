@@ -69,6 +69,7 @@ import { receive, send } from "./request"
 import { closeApp, save } from "./save"
 import { client } from "./sendData"
 import { previewShortcuts } from "./shortcuts"
+import { checkShortcut } from "../church/churchShortcuts"
 import { restartOutputs } from "./updateSettings"
 
 let mainReceiversInitialized = false
@@ -182,7 +183,10 @@ const receiveOUTPUTasMAIN: any = {
         alertMessage.set(data)
         activePopup.set("alert")
     },
-    MAIN_SHORTCUT: (data: { key: string }) => {
+    MAIN_SHORTCUT: (data: { key: string; churchOnly?: boolean }) => {
+        // FreeShow Church: custom shortcuts (Settings > Shortcuts) also work when the key is pressed on an output screen
+        const churchResult = checkShortcut(data, true)
+        if (churchResult || data.churchOnly) return
         if (previewShortcuts[data.key]) {
             previewShortcuts[data.key]({ ...data, preventDefault: () => "" })
         }

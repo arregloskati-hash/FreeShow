@@ -50,6 +50,7 @@ export const contextMenuItems: { [key: string]: ContextMenuItem } = {
     church_settings_files: { label: "settings.files", icon: "files" },
     church_settings_profiles: { label: "settings.profiles", icon: "profiles" },
     church_settings_theme: { label: "settings.theme", icon: "theme" },
+    church_settings_shortcuts: { label: "settings.shortcuts", icon: "shortcuts" },
     church_settings_other: { label: "settings.other", icon: "other" },
     shortcuts: { label: "popup.shortcuts", icon: "shortcut", shortcuts: ["Ctrl+?"] },
     rename: { label: "actions.rename", icon: "rename", iconColor: "#6effbe", shortcuts: ["F2"] },
@@ -246,7 +247,7 @@ export const contextMenuLayouts: { [key: string]: string[] } = {
     edit: ["undo", "redo", "history", "SEPARATOR", "cut", "copy", "paste", "delete", "SEPARATOR", "selectAll"], // , "cut"
     view: ["focus_mode", "fullscreen"], // , "resetZoom", "zoomIn", "zoomOut"
     // FreeShow Church: Settings menu (Windows/Linux menu bar)
-    settings: ["church_settings", "SEPARATOR", "church_settings_general", "church_settings_display_settings", "church_settings_styles", "church_settings_audio", "church_settings_connection", "church_settings_files", "church_settings_profiles", "church_settings_theme", "church_settings_other"],
+    settings: ["church_settings", "SEPARATOR", "church_settings_general", "church_settings_display_settings", "church_settings_styles", "church_settings_audio", "church_settings_connection", "church_settings_files", "church_settings_profiles", "church_settings_theme", "church_settings_shortcuts", "church_settings_other"],
     help: ["quick_search", "shortcuts", "docs", "quick_start_guide", "about"],
     // MAIN
     // default: ["save", "settings", "history", "SEPARATOR", "about", "quit"],

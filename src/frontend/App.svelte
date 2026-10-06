@@ -21,10 +21,12 @@
     import { activeProfile, activeTimers, closeAd, currentWindow, disabledServers, events, language, loaded, localeDirection, os, outputDisplay, outputs, profiles, theme, themes, timers } from "./stores"
     import { focusArea, logerror, mainClick, toggleRemoteStream } from "./utils/common"
     import { keydown } from "./utils/shortcuts"
+    import { installChurchShortcuts } from "./church/churchShortcuts"
     import { startup } from "./utils/startup"
     import { setUiStyle } from "./church/ember"
 
     startup()
+    installChurchShortcuts() // FreeShow Church: customizable shortcuts (ignored in output windows)
 
     $: isWindows = !$currentWindow && $os.platform === "win32"
 

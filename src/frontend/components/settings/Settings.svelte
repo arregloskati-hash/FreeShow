@@ -22,6 +22,7 @@
     import StylesButtons from "./tabs/StylesButtons.svelte"
     import StylesTabs from "./tabs/StylesTabs.svelte"
     import Theme from "./tabs/Theme.svelte"
+    import ShortcutsSettings from "../../church/ShortcutsSettings.svelte"
     import ThemeButtons from "./tabs/ThemeButtons.svelte"
     import ThemeTabs from "./tabs/ThemeTabs.svelte"
 
@@ -89,6 +90,8 @@
             <Profiles />
         {:else if tabId === "theme"}
             <Theme />
+        {:else if tabId === "shortcuts"}
+            <ShortcutsSettings />
         {:else if tabId === "other"}
             <Other />
         {/if}

@@ -40,6 +40,7 @@
     let numberKeyTimeout: NodeJS.Timeout | null = null
     let previousNumberKey = ""
     function keydown(e: KeyboardEvent) {
+        if ((e as any).churchShortcutBlocked) return // FreeShow Church: this default key was removed in Settings > Shortcuts
         if ($contextActive) return
         if ($guideActive || $activePopup === "assign_shortcut") return
         if ((e.ctrlKey || e.metaKey || e.altKey) && previewCtrlShortcuts[e.key]) {
