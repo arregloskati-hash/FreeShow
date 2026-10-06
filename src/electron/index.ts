@@ -34,6 +34,12 @@ if (!isProd) process.env.ELECTRON_DISABLE_SECURITY_WARNINGS = "true"
 
 // development settings
 export const OUTPUT_CONSOLE = false
+
+// FreeShow Church: keep output windows rendering at full speed even when they're hidden, minimized or covered
+// (capture-only/NDI outputs are always hidden; without this Chromium may throttle them and NDI freezes)
+app.commandLine.appendSwitch("disable-renderer-backgrounding")
+app.commandLine.appendSwitch("disable-background-timer-throttling")
+app.commandLine.appendSwitch("disable-backgrounding-occluded-windows")
 const RECORD_STARTUP_TIME = false
 
 // get os platform

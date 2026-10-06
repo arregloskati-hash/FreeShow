@@ -7,7 +7,8 @@
     import type { Output, RtmpDestination } from "../../../../types/Output"
     import { AudioAnalyser } from "../../../audio/audioAnalyser"
     import { requestMain, sendMain } from "../../../IPC/main"
-    import { activePage, activePopup, activeStage, activeStyle, alertMessage, currentOutputSettings, ndiData, outputDisplay, outputs, rtmpStatus, saved, settingsTab, special, stageShows, styles, toggleOutputEnabled } from "../../../stores"
+    import { restartOutputAndShow } from "../../../church/outputSync"
+    import { activePage, activeStage, activeStyle, currentOutputSettings, ndiData, outputDisplay, outputs, rtmpStatus, saved, settingsTab, special, stageShows, styles, toggleOutputEnabled } from "../../../stores"
     import { newToast } from "../../../utils/common"
     import { translateText } from "../../../utils/language"
     import { destroy, receive, send } from "../../../utils/request"
@@ -69,8 +70,10 @@
 
             if (out.enabled) {
                 const ipcKeys = ["alwaysOnTop", "transparent", "invisible", "ndi", "webrtc", "rtmp"]
-                if (key === "transparent") {
-                    send(OUTPUT, ["CREATE"], { id: outputId, ...out })
+                if (key === "transparent" || key === "invisible") {
+                    // FreeShow Church: "invisible" (NDI/capture only) changes the window itself -> restart it
+                    // (was sent as a value the engine ignored), and show it again if outputs are shown
+                    setTimeout(() => restartOutputAndShow(outputId))
                 } else if (key === "blackmagic" || ipcKeys.includes(key)) {
                     send(OUTPUT, ["SET_VALUE"], { id: outputId, key, value: key === "blackmagic" ? out : value })
                 }
@@ -122,11 +125,9 @@
 
         send(NDI, ["NDI_DATA"], { id, ...newData })
 
-        if (key === "name" || key === "groups") {
-            alertMessage.set("settings.restart_for_change")
-            activePopup.set("alert")
-            saved.set(false)
-        }
+        // FreeShow Church: applied live (the NDI source is renamed / moved to the new groups right away)
+        send(OUTPUT, ["SET_VALUE"], { id, key: "ndiData", value: newData })
+        if (key === "name" || key === "groups") saved.set(false)
     }
 
     // webrtc

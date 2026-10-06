@@ -234,19 +234,13 @@ export class CaptureLifecycle {
 
         console.info("Capture - stopping: " + id)
 
-        this.cleanupListeners(capture.window)
+        // FreeShow Church: capture never adds window listeners, so nothing to clean up here. This used to call
+        // window.removeAllListeners() + webContents.removeAllListeners(), which also removed the output window's
+        // own move/resize/reload handlers and Electron's internal IPC listeners whenever a capture stopped
+        // (e.g. NDI turned off, stage/remote viewers disconnecting), leaving outputs half-broken.
         delete output.captureOptions
         this.updateWebRtcHostState()
         this.updateRtmpState()
-    }
-
-    private static cleanupListeners(window: any) {
-        if (!window || window.isDestroyed()) return
-
-        window.removeAllListeners()
-        if (window.webContents && !window.webContents.isDestroyed?.()) {
-            window.webContents.removeAllListeners()
-        }
     }
 
     private static updateWebRtcHostState() {

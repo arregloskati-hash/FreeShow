@@ -16,6 +16,23 @@ import { OutputVisibility } from "./OutputVisibility"
 export class OutputLifecycle {
     private static pendingCaptureStart: { [id: string]: NodeJS.Timeout } = {}
 
+    // FreeShow Church: an output that is closing (removed, or being restarted). While closing, new create/remove
+    // requests only update what should happen once it's closed, and show/hide requests wait for it, so fast
+    // clicks (enable/disable, restart, toggle) can never leave two windows, a stray NDI source or a wrong state.
+    private static closing: { [id: string]: { reopen: Output | null; queued: (() => void)[] } } = {}
+    // screen outputs hidden because their display was unplugged (shown again when it comes back)
+    private static hiddenByDisplayLoss: Set<string> = new Set()
+
+    static isClosing(id: string) {
+        return !!this.closing[id]
+    }
+
+    /** run now, or after the output has finished closing/reopening */
+    static whenSettled(id: string, fn: () => void) {
+        if (this.closing[id]) this.closing[id].queued.push(fn)
+        else fn()
+    }
+
     private static clearPendingCaptureStart(id: string) {
         const pending = this.pendingCaptureStart[id]
         if (!pending) return
@@ -29,11 +46,53 @@ export class OutputLifecycle {
             setTimeout(() => this.restoreAllOutputBounds(), 500)
         })
         screen.on("display-added", () => {
-            setTimeout(() => this.restoreAllOutputBounds(), 1000)
+            setTimeout(() => {
+                this.restoreAllOutputBounds()
+                this.reshowOutputsOnReturnedDisplays()
+            }, 1000)
         })
         screen.on("display-removed", () => {
+            // FreeShow Church: hide screen outputs whose display is gone first, otherwise the OS moves them
+            // onto the main screen (covering the operator's screen in the middle of a service)
+            this.hideOutputsOnMissingDisplays()
             this.restoreAllOutputBounds()
         })
+    }
+
+    private static hideOutputsOnMissingDisplays() {
+        OutputHelper.getKeys().forEach((id) => {
+            const output = OutputHelper.getOutput(id)
+            if (!output?.window || output.window.isDestroyed() || output.invisible) return
+            if (!output.window.isVisible()) return
+            if (OutputVisibility.findOutputDisplay(output)) return
+
+            console.info("Output display disconnected, hiding output until it's back: " + id)
+            this.hiddenByDisplayLoss.add(id)
+            OutputVisibility.hideWindow(output.window)
+        })
+    }
+
+    private static reshowOutputsOnReturnedDisplays() {
+        this.hiddenByDisplayLoss.forEach((id) => {
+            const output = OutputHelper.getOutput(id)
+            if (!output?.window || output.window.isDestroyed() || output.invisible) {
+                this.hiddenByDisplayLoss.delete(id)
+                return
+            }
+
+            const display = OutputVisibility.findOutputDisplay(output)
+            if (!display) return
+
+            console.info("Output display reconnected, showing output again: " + id)
+            this.hiddenByDisplayLoss.delete(id)
+            OutputHelper.Bounds.updateBounds({ id, bounds: { ...display.bounds } })
+            OutputVisibility.showWindow(output.window, output.alwaysOnTop !== false)
+        })
+    }
+
+    /** the output was hidden on purpose (or shown again) - forget any "waiting for display" state */
+    static clearDisplayLossState(id: string) {
+        this.hiddenByDisplayLoss.delete(id)
     }
 
     static restoreAllOutputBounds() {
@@ -41,6 +100,7 @@ export class OutputLifecycle {
             const output = OutputHelper.getOutput(id)
             if (!output || !output.window || output.window.isDestroyed()) return
             if (!output.intendedBounds) return
+            if (this.hiddenByDisplayLoss.has(id)) return // keep where it belongs until its display is back
 
             // invisible/capture outputs: re-apply so the DPI-corrected render size follows scale changes
             if (output.invisible) {
@@ -64,11 +124,19 @@ export class OutputLifecycle {
         const id: string = output.id || ""
         if (!id) return
 
+        // closing (removed or restarting): just make sure it opens with these settings afterwards
+        if (this.closing[id]) {
+            this.closing[id].reopen = output
+            return
+        }
+
+        // already exists: restart it with the new settings
         if (OutputHelper.getOutput(id)) {
-            CaptureHelper.Lifecycle.stopCapture(id)
             this.removeOutput(id, output)
             return
         }
+
+        this.hiddenByDisplayLoss.delete(id)
 
         this.clearPendingCaptureStart(id)
 
@@ -81,7 +149,7 @@ export class OutputLifecycle {
         const outputWindow = this.createOutputWindow({ ...renderBounds, alwaysOnTop: output.alwaysOnTop !== false, backgroundColor: output.transparent ? "#00000000" : "#000000" }, id, output.name, output)
         // const previewWindow = this.createPreviewWindow({ ...output.bounds, backgroundColor: "#000000" })
 
-        OutputHelper.setOutput(id, { window: outputWindow, invisible: output.invisible, boundsLocked: output.boundsLocked, screen: output.screen, intendedBounds: resolvedBounds, transparent: output.transparent, webrtcData: output.webrtcData, rtmpData: output.rtmpData })
+        OutputHelper.setOutput(id, { window: outputWindow, invisible: output.invisible, boundsLocked: output.boundsLocked, screen: output.screen, intendedBounds: resolvedBounds, transparent: output.transparent, webrtcData: output.webrtcData, rtmpData: output.rtmpData, name: output.name, ndiData: output.ndiData, alwaysOnTop: output.alwaysOnTop })
         // OutputHelper.setOutput(id, { window: outputWindow, previewWindow: previewWindow })
         OutputHelper.Bounds.updateBounds({ id: output.id!, bounds: resolvedBounds })
         this.updateWindowConstraints(id)
@@ -161,26 +229,68 @@ export class OutputLifecycle {
         return window
     }
 
+    /** only creates the output if it doesn't exist yet (never restarts a running one) */
+    static ensureOutput(output: Output) {
+        const id = output?.id || ""
+        if (!id || this.closing[id] || OutputHelper.getOutput(id)) return
+        this.createOutput(output)
+    }
+
     static async removeOutput(id: string, reopen: Output | null = null) {
+        // already closing: only update whether it should open again afterwards
+        if (this.closing[id]) {
+            this.closing[id].reopen = reopen
+            return
+        }
+
         this.clearPendingCaptureStart(id)
+        this.hiddenByDisplayLoss.delete(id)
 
         CaptureHelper.Lifecycle.stopCapture(id)
         NdiSender.stopSenderNDI(id)
         BlackmagicSender.stop(id)
 
         const output = OutputHelper.getOutput(id)
-        if (!output) return
-
-        if (output.window.isDestroyed()) {
-            OutputHelper.deleteOutput(id)
-            if (reopen) OutputLifecycle.createOutput(reopen)
+        if (!output) {
+            if (reopen) this.createOutput(reopen)
             return
         }
 
-        output.window.once("closed", () => {
+        this.closing[id] = { reopen, queued: [] }
+
+        let finished = false
+        let fallback: NodeJS.Timeout | null = null
+        const finish = () => {
+            if (finished) return
+            finished = true
+            if (fallback) clearTimeout(fallback)
+
             OutputHelper.deleteOutput(id)
-            if (reopen) OutputLifecycle.createOutput(reopen)
-        })
+
+            const state = this.closing[id]
+            delete this.closing[id]
+
+            if (state?.reopen) this.createOutput(state.reopen)
+            state?.queued.forEach((fn) => {
+                try {
+                    fn()
+                } catch (err) {
+                    console.error(err)
+                }
+            })
+        }
+
+        if (!output.window || output.window.isDestroyed()) {
+            finish()
+            return
+        }
+
+        output.window.once("closed", finish)
+        // never get stuck waiting: force it closed if the window doesn't close by itself
+        fallback = setTimeout(() => {
+            if (output.window && !output.window.isDestroyed()) output.window.destroy()
+            finish()
+        }, 3000)
 
         try {
             // this has to be called to actually remove the process!
@@ -189,6 +299,7 @@ export class OutputLifecycle {
             await wait(80)
         } catch (err) {
             console.error(err)
+            finish()
         }
     }
 
@@ -213,7 +324,8 @@ export class OutputLifecycle {
         // Argument of type '"move"' is not assignable to parameter of type '"will-resize"'.
         // @ts-ignore
         window.on("move", (e: Electron.Event) => {
-            if (!OutputHelper.Bounds.moveEnabled || OutputHelper.Bounds.updatingBounds || OutputHelper.getOutput(id).boundsLocked) return e.preventDefault()
+            // (the output can already be removed while its window is closing)
+            if (!OutputHelper.Bounds.moveEnabled || OutputHelper.Bounds.updatingBounds || !OutputHelper.getOutput(id) || OutputHelper.getOutput(id).boundsLocked) return e.preventDefault()
 
             const bounds = window.getBounds()
             toApp(OUTPUT, { channel: "MOVE", data: { id, bounds } })
@@ -221,10 +333,21 @@ export class OutputLifecycle {
 
         // @ts-ignore
         window.on("resize", (e: Electron.Event) => {
-            if (OutputHelper.Bounds.moveEnabled || OutputHelper.Bounds.updatingBounds || OutputHelper.getOutput(id).boundsLocked) return e.preventDefault()
+            // FreeShow Church: report resizes while moving/resizing is allowed (this was inverted, so manual resizes were never saved)
+            if (!OutputHelper.Bounds.moveEnabled || OutputHelper.Bounds.updatingBounds || !OutputHelper.getOutput(id) || OutputHelper.getOutput(id).boundsLocked) return e.preventDefault()
 
             const bounds = window.getBounds()
             toApp(OUTPUT, { channel: "MOVE", data: { id, bounds } })
+        })
+
+        // FreeShow Church: if the output's page crashes (GPU/driver hiccup, out of memory), reload it instead of
+        // leaving a frozen or black output for the rest of the service
+        window.webContents.on("render-process-gone", (_e, details) => {
+            if (details?.reason === "clean-exit") return
+            console.error(`Output ${name || id} crashed (${details?.reason}), reloading`)
+            setTimeout(() => {
+                if (!window.isDestroyed()) window.webContents.reload()
+            }, 300)
         })
     }
 

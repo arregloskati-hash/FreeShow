@@ -1,4 +1,5 @@
 <script lang="ts">
+    import { restartOutputAndShow } from "../../../church/outputSync"
     import { OUTPUT } from "../../../../types/Channels"
     import type { ClickEvent } from "../../../../types/Main"
     import type { Output } from "../../../../types/Output"
@@ -70,7 +71,10 @@
 
             const captureTypeKeys = ["blackmagic", "ndi", "webrtc", "rtmp"]
             const ipcKeys = ["alwaysOnTop", "transparent", "invisible"]
-            if (out.enabled && (captureTypeKeys.includes(key) || ipcKeys.includes(key))) {
+            // FreeShow Church: transparent/invisible change the window itself -> restart it (and show it again if shown)
+            if (out.enabled && (key === "transparent" || key === "invisible")) {
+                setTimeout(() => restartOutputAndShow(outputId))
+            } else if (out.enabled && (captureTypeKeys.includes(key) || ipcKeys.includes(key))) {
                 if (value && captureTypeKeys.includes(key)) newToast("toast.output_capture_enabled")
                 send(OUTPUT, ["SET_VALUE"], { id: outputId, key, value: key === "blackmagic" ? out : value })
             }

@@ -1,4 +1,4 @@
-import type { BrowserWindow, Rectangle } from "electron"
+import type { BrowserWindow, Display, Rectangle } from "electron"
 import { screen } from "electron"
 import { mainWindow, toApp } from "../.."
 import { MAIN, OUTPUT } from "../../../types/Channels"
@@ -12,6 +12,12 @@ export class OutputVisibility {
         const newStates: { id: string; active: boolean | "invisible" }[] = []
 
         data.outputs.forEach((output) => {
+            // FreeShow Church: the output is closing/restarting - apply this once it's open again (it reports its own state)
+            if (output?.id && OutputHelper.Lifecycle.isClosing(output.id)) {
+                OutputHelper.Lifecycle.whenSettled(output.id, () => OutputVisibility.toggleOutputs({ ...data, outputs: [output] }))
+                return
+            }
+
             const force = !!(data.force || output.boundsLocked)
             const newState = OutputVisibility.toggleOutput(output, data.state, force, data.autoStartup, data.autoPosition)
             newStates.push({ id: output.id, active: newState })
@@ -24,6 +30,9 @@ export class OutputVisibility {
         if (!output?.id) return false
 
         let window: BrowserWindow = OutputHelper.getOutput(output.id)?.window
+
+        // a deliberate show/hide replaces any "waiting for the display to come back" state
+        OutputHelper.Lifecycle.clearDisplayLossState(output.id)
 
         if (!window || window.isDestroyed()) {
             OutputHelper.Lifecycle.createOutput(output)
@@ -41,8 +50,11 @@ export class OutputVisibility {
 
         let bounds: Rectangle = this.resolveOutputBounds(output, autoPosition && !force)
         const windowNotCoveringMain = this.amountCovered(bounds, mainWindow!.getBounds()) < 0.5
+        // FreeShow Church: never show a screen output where no display is (e.g. HDMI unplugged): the OS would
+        // move it onto the main screen and cover it
+        const onADisplay = this.isOnAnyDisplay(bounds)
 
-        if (state === true && (force || window.isAlwaysOnTop() === false || windowNotCoveringMain)) {
+        if (state === true && onADisplay && (force || window.isAlwaysOnTop() === false || windowNotCoveringMain)) {
             this.showWindow(window, output.alwaysOnTop !== false)
 
             OutputHelper.Bounds.updateBounds({ id: output.id, bounds })
@@ -92,6 +104,28 @@ export class OutputVisibility {
         return outputBounds
     }
 
+    static isOnAnyDisplay(bounds: Rectangle) {
+        if (!bounds?.width || !bounds?.height) return false
+        const centerX = bounds.x + bounds.width / 2
+        const centerY = bounds.y + bounds.height / 2
+        return screen.getAllDisplays().some((d) => centerX >= d.bounds.x && centerX < d.bounds.x + d.bounds.width && centerY >= d.bounds.y && centerY < d.bounds.y + d.bounds.height)
+    }
+
+    /** the display a screen output belongs on (by its chosen screen, else where it was placed), if connected */
+    static findOutputDisplay(output: { screen?: string | null; intendedBounds?: Rectangle }): Display | null {
+        const displays = screen.getAllDisplays()
+        if (output.screen) {
+            const byId = displays.find((d) => d.id.toString() === output.screen)
+            if (byId) return byId
+        }
+
+        const b = output.intendedBounds
+        if (!b?.width || !b?.height) return null
+        const centerX = b.x + b.width / 2
+        const centerY = b.y + b.height / 2
+        return displays.find((d) => centerX >= d.bounds.x && centerX < d.bounds.x + d.bounds.width && centerY >= d.bounds.y && centerY < d.bounds.y + d.bounds.height) || null
+    }
+
     static getSecondDisplay(bounds: Rectangle) {
         const displays = screen.getAllDisplays()
         if (displays.length !== 2) return bounds
@@ -122,16 +156,34 @@ export class OutputVisibility {
     // https://github.com/electron/electron/issues/1415
     // https://github.com/electron/electron/issues/1054
 
+    // FreeShow Church: windows that should be shown (a show can arrive while a new window is still loading /
+    // being minimized by macOS, and is then ignored - so it's applied again once the window is ready)
+    private static wantShown = new WeakMap<BrowserWindow, boolean>()
+
     static showWindow(window: BrowserWindow, alwaysOnTop = true) {
         if (!window || window.isDestroyed()) return
 
-        window.showInactive()
-        if (alwaysOnTop) setOutputAlwaysOnTop(window, true)
-        window.moveTop()
+        this.wantShown.set(window, alwaysOnTop)
+        const show = () => {
+            if (window.isDestroyed() || !this.wantShown.has(window)) return
+            window.showInactive()
+            if (this.wantShown.get(window)) setOutputAlwaysOnTop(window, true)
+            window.moveTop()
+        }
+
+        show()
+
+        // still loading: show again when ready
+        if (window.webContents.isLoadingMainFrame()) window.webContents.once("did-finish-load", () => setTimeout(show, 100))
+        // the show did not take (e.g. macOS was still minimizing the new window): try again
+        setTimeout(() => {
+            if (!window.isDestroyed() && this.wantShown.has(window) && (!window.isVisible() || window.isMinimized())) show()
+        }, 700)
     }
 
     static hideWindow(window: BrowserWindow, data: Output | null = null) {
         if (!window || window.isDestroyed()) return
+        this.wantShown.delete(window)
 
         OutputBounds.disableWindowMoveListener()
 

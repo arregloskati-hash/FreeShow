@@ -60,6 +60,9 @@ export class NdiSender {
         }
     } = {}
 
+    // FreeShow Church: senders that are shutting down (finishing a frame that is being sent right now)
+    private static stopping: { [key: string]: Promise<void> | undefined } = {}
+
     static stopSenderNDI(id: string) {
         const senderData = this.NDI[id]
         if (!senderData) return
@@ -69,15 +72,43 @@ export class NdiSender {
             clearInterval(senderData.timer)
         }
 
-        if (senderData.sender) {
+        // stop accepting frames right away
+        delete this.NDI[id]
+        senderData.pendingVideoFrame = undefined
+        senderData.audioQueue = []
+
+        const sender = senderData.sender
+        if (!sender) return
+
+        // never destroy the native sender while it is sending a frame (could freeze or crash NDI)
+        const destroy = () => {
             try {
-                senderData.sender.destroy()
+                sender.destroy()
             } catch (err) {
                 console.error("ERROR", err)
             }
         }
 
-        delete this.NDI[id]
+        if (!senderData.sendingVideo && !senderData.sendingAudio) {
+            destroy()
+            return
+        }
+
+        const started = Date.now()
+        const done = new Promise<void>((resolve) => {
+            const check = () => {
+                if ((!senderData.sendingVideo && !senderData.sendingAudio) || Date.now() - started > 1000) {
+                    destroy()
+                    resolve()
+                } else setTimeout(check, 5)
+            }
+            check()
+        })
+
+        this.stopping[id] = done
+        done.finally(() => {
+            if (this.stopping[id] === done) delete this.stopping[id]
+        })
     }
 
     private static async sendQueuedVideoFrameNDI(id: string) {
@@ -96,7 +127,7 @@ export class NdiSender {
             console.error("Error sending NDI video frame:", err)
         } finally {
             senderData.sendingVideo = false
-            if (senderData.pendingVideoFrame) {
+            if (this.NDI[id] === senderData && senderData.pendingVideoFrame) {
                 void this.sendQueuedVideoFrameNDI(id)
             }
         }
@@ -110,7 +141,8 @@ export class NdiSender {
 
         try {
             while (senderData.audioQueue && senderData.audioQueue.length > 0) {
-                if (!this.NDI[id]?.sender) break
+                // stop if this sender was stopped/replaced
+                if (this.NDI[id] !== senderData || !senderData.sender) break
 
                 // Limit queue to prevent excessive memory/latency if sending is falling behind
                 if (senderData.audioQueue.length > 50) {
@@ -126,7 +158,7 @@ export class NdiSender {
             console.error("Error sending NDI audio frame:", err)
         } finally {
             senderData.sendingAudio = false
-            if (this.NDI[id]?.sender && senderData.audioQueue && senderData.audioQueue.length > 0) {
+            if (this.NDI[id] === senderData && senderData.sender && senderData.audioQueue && senderData.audioQueue.length > 0) {
                 void this.sendQueuedAudioFrameNDI(id)
             }
         }
@@ -141,10 +173,16 @@ export class NdiSender {
             this.stopSenderNDI(id)
         }
 
-        this.NDI[id] = {
+        // wait until a previous sender for this output is really gone, so receivers never see two sources with the same name
+        if (this.stopping[id]) await this.stopping[id]
+        // (another create for this output may have started meanwhile - the newest one wins)
+        if (this.NDI[id]) this.stopSenderNDI(id)
+
+        const senderData: (typeof NdiSender.NDI)[string] = {
             name,
             groups
         }
+        this.NDI[id] = senderData
         console.info("NDI - creating sender: " + this.NDI[id].name, groups ? `; In group: ${groups}` : "")
 
         try {
@@ -159,22 +197,23 @@ export class NdiSender {
                 clockAudio: false
             })
 
-            // If stopSenderNDI was called while await grandiose.send was in progress
-            if (!this.NDI[id]) {
+            // If stopSenderNDI (or a newer create) happened while await grandiose.send was in progress
+            if (this.NDI[id] !== senderData) {
                 try {
                     sender.destroy()
                 } catch {}
                 return
             }
 
-            this.NDI[id].sender = sender
+            senderData.sender = sender
         } catch (err) {
             console.error("Could not create NDI sender:", err)
-            delete this.NDI[id]
+            if (this.NDI[id] === senderData) delete this.NDI[id]
             return
         }
 
-        this.NDI[id].timer = setInterval(() => {
+        senderData.timer = setInterval(() => {
+            if (this.NDI[id] !== senderData) return
             if (!this.NDI[id]?.sender) return
             /*  poll NDI for connections  */
             const conns: number = this.NDI[id].sender?.connections() || 0

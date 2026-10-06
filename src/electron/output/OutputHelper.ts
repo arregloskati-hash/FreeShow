@@ -16,6 +16,8 @@ export class OutputHelper {
     static receiveOutput(_e: Electron.IpcMainEvent, msg: Message) {
         const outputResponses = {
             CREATE: (data: Output) => OutputHelper.Lifecycle.createOutput(data),
+            // FreeShow Church: create only if it doesn't exist yet (used to keep the engine in sync with the outputs list)
+            ENSURE: (data: Output) => OutputHelper.Lifecycle.ensureOutput(data),
             REMOVE: (data: { id: string }) => OutputHelper.Lifecycle.removeOutput(data.id),
             // DISPLAY: (data: { output: Output; enabled?: "toggle" | boolean; force?: boolean; autoPosition?: boolean; auto?: boolean; one?: boolean }) => OutputHelper.Visibility.displayOutput(data),
             TOGGLE_OUTPUTS: (data: { outputs: (Output & { id: string })[]; state: boolean; force?: boolean; autoStartup?: boolean; autoPosition?: boolean }) => OutputHelper.Visibility.toggleOutputs(data),

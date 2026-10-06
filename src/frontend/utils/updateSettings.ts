@@ -1,3 +1,4 @@
+import { startOutputSync } from "../church/outputSync"
 import { get } from "svelte/store"
 import { uid } from "uid"
 import { OUTPUT } from "../../types/Channels"
@@ -146,6 +147,8 @@ export function updateSettings(data: any) {
         setTimeout(
             () => {
                 restartOutputs()
+                // FreeShow Church: from now on keep the output engine in sync with the outputs list
+                setTimeout(startOutputSync, 1500)
                 const delay = 1200
                 if (get(autoOutput)) setTimeout(() => toggleOutputs(null, { autoStartup: true }), get(os).platform === "darwin" ? delay + 300 : delay)
                 setTimeout(() => checkWindowCapture(true), get(os).platform === "darwin" ? delay + 300 + 500 : delay + 500)
