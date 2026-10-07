@@ -18,6 +18,15 @@ export class OutputVisibility {
                 return
             }
 
+            // FreeShow Church: "activate outputs at startup" never opens a screen output on the operator's screen
+            // (e.g. the TV/projector isn't connected yet) - it keeps running hidden and is shown once its display is connected
+            if (data.autoStartup && data.state === true && !data.force && !output.invisible && OutputVisibility.wouldCoverOperatorScreen(output)) {
+                OutputVisibility.toggleOutput(output, false, false, true)
+                if (output.screen) OutputHelper.Lifecycle.waitForDisplay(output.id, output.screen)
+                newStates.push({ id: output.id, active: false })
+                return
+            }
+
             const force = !!(data.force || output.boundsLocked)
             const newState = OutputVisibility.toggleOutput(output, data.state, force, data.autoStartup, data.autoPosition)
             newStates.push({ id: output.id, active: newState })
@@ -42,7 +51,8 @@ export class OutputVisibility {
 
         if (output.invisible) {
             OutputHelper.setOutput(output.id, { ...OutputHelper.getOutput(output.id), invisible: true })
-            if (window.isVisible()) this.hideWindow(window)
+            // (also when minimized: on macOS a new window starts minimized and would stay in the Dock)
+            if (window.isVisible() || window.isMinimized()) this.hideWindow(window)
             // capture-only: render at the configured resolution (DPI-corrected)
             OutputBounds.updateBounds({ id: output.id, bounds: output.bounds })
             return "invisible"
@@ -102,6 +112,23 @@ export class OutputVisibility {
         }
 
         return outputBounds
+    }
+
+    /** FreeShow Church: would showing this screen output put it on the display the main window is on (or is its chosen display missing)? */
+    static wouldCoverOperatorScreen(output: Output) {
+        const displays = screen.getAllDisplays()
+        if (output.screen && !displays.some((d) => d.id.toString() === output.screen)) return true
+        if (!mainWindow || mainWindow.isDestroyed()) return false
+
+        const bounds = this.resolveOutputBounds(output as any)
+        if (!bounds?.width || !bounds?.height) return false
+        const mainDisplay = screen.getDisplayMatching(mainWindow.getBounds())
+        return screen.getDisplayMatching(bounds).id === mainDisplay.id
+    }
+
+    /** FreeShow Church: is the window meant to be shown? */
+    static isWantedShown(window: BrowserWindow) {
+        return this.wantShown.has(window)
     }
 
     static isOnAnyDisplay(bounds: Rectangle) {
@@ -181,6 +208,24 @@ export class OutputVisibility {
         }, 700)
     }
 
+    /** FreeShow Church: hide, also out of the macOS Dock (a minimized window stays there when only hidden) */
+    static hideFully(window: BrowserWindow) {
+        if (!window || window.isDestroyed()) return
+        if (process.platform !== "darwin" || !window.isMinimized()) {
+            window.hide()
+            return
+        }
+
+        // un-minimize invisibly, then hide
+        window.setOpacity(0)
+        window.restore()
+        setTimeout(() => {
+            if (window.isDestroyed()) return
+            if (!this.wantShown.has(window)) window.hide()
+            window.setOpacity(1)
+        }, 450)
+    }
+
     static hideWindow(window: BrowserWindow, data: Output | null = null) {
         if (!window || window.isDestroyed()) return
         this.wantShown.delete(window)
@@ -188,7 +233,12 @@ export class OutputVisibility {
         OutputBounds.disableWindowMoveListener()
 
         window.setKiosk(false)
-        window.hide()
+        this.hideFully(window)
+
+        // FreeShow Church: a window macOS was still minimizing ignores hide() and stays in the Dock - hide again
+        setTimeout(() => {
+            if (!window.isDestroyed() && !this.wantShown.has(window) && (window.isVisible() || window.isMinimized())) this.hideFully(window)
+        }, 700)
 
         // seems to be fixed:
         if (!data) return

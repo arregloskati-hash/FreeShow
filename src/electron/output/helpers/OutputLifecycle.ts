@@ -23,6 +23,29 @@ export class OutputLifecycle {
     // screen outputs hidden because their display was unplugged (shown again when it comes back)
     private static hiddenByDisplayLoss: Set<string> = new Set()
 
+    // screen outputs not opened at startup because their display (by id) wasn't connected - shown when it is
+    private static waitingForDisplay: Map<string, string> = new Map()
+
+    static waitForDisplay(id: string, screenId: string) {
+        this.waitingForDisplay.set(id, screenId)
+    }
+
+    private static showOutputsWaitingForDisplay() {
+        const displays = screen.getAllDisplays()
+        this.waitingForDisplay.forEach((screenId, id) => {
+            const display = displays.find((d) => d.id.toString() === screenId)
+            if (!display) return
+            this.waitingForDisplay.delete(id)
+
+            const output = OutputHelper.getOutput(id)
+            if (!output?.window || output.window.isDestroyed() || output.invisible) return
+            console.info("Output display connected, showing output: " + id)
+            OutputHelper.Bounds.updateBounds({ id, bounds: { ...display.bounds } })
+            OutputVisibility.showWindow(output.window, output.alwaysOnTop !== false)
+            toApp(OUTPUT, { channel: "OUTPUT_STATE", data: [{ id, active: true }] })
+        })
+    }
+
     static isClosing(id: string) {
         return !!this.closing[id]
     }
@@ -49,6 +72,7 @@ export class OutputLifecycle {
             setTimeout(() => {
                 this.restoreAllOutputBounds()
                 this.reshowOutputsOnReturnedDisplays()
+                this.showOutputsWaitingForDisplay()
             }, 1000)
         })
         screen.on("display-removed", () => {
@@ -93,6 +117,7 @@ export class OutputLifecycle {
     /** the output was hidden on purpose (or shown again) - forget any "waiting for display" state */
     static clearDisplayLossState(id: string) {
         this.hiddenByDisplayLoss.delete(id)
+        this.waitingForDisplay.delete(id)
     }
 
     static restoreAllOutputBounds() {
@@ -222,6 +247,16 @@ export class OutputLifecycle {
 
         loadWindowContent(window, "output")
         this.setWindowListeners(window, { id, name })
+
+        // FreeShow Church: the minimize above keeps it in the macOS Dock - once loaded, hide it unless it should be shown
+        if (isMac) {
+            window.webContents.once("did-finish-load", () => {
+                setTimeout(() => {
+                    if (window.isDestroyed() || OutputVisibility.isWantedShown(window)) return
+                    if (window.isMinimized() || window.isVisible()) OutputVisibility.hideFully(window)
+                }, 300)
+            })
+        }
 
         // open devtools
         if (OUTPUT_CONSOLE) window.webContents.openDevTools({ mode: "detach" })
