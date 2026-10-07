@@ -245,6 +245,9 @@ export class NdiSender {
 
         const fourCC = transparent ? grandiose.FOURCC_BGRA : grandiose.FOURCC_BGRX
         if (!transparent) util.ImageBufferAdjustment.BGRAtoBGRX(buffer)
+        // FreeShow Church: Chromium captures with premultiplied alpha, NDI expects straight alpha. Without this,
+        // every soft edge (anti-aliased text, glows, shadows, fades) arrives darker and off-color at the receiver.
+        else NdiSender.unpremultiplyAlpha(buffer)
 
         const timecode = (this.timeStart + process.hrtime.bigint()) / this.TIMECODE_DIVISOR
 
@@ -267,6 +270,48 @@ export class NdiSender {
         }
 
         void this.sendQueuedVideoFrameNDI(id)
+    }
+
+    // c * 255 / a for every alpha (1-254) and color value, so the per-pixel work is one table lookup
+    private static unpremultiplyTable: Uint8Array | null = null
+    private static getUnpremultiplyTable() {
+        if (this.unpremultiplyTable) return this.unpremultiplyTable
+        const table = new Uint8Array(256 * 256)
+        for (let a = 1; a < 256; a++) {
+            for (let c = 0; c <= a; c++) table[a * 256 + c] = Math.min(255, Math.round((c * 255) / a))
+            for (let c = a + 1; c < 256; c++) table[a * 256 + c] = 255 // invalid premultiplied value, clamp
+        }
+        this.unpremultiplyTable = table
+        return table
+    }
+
+    static unpremultiplyAlpha(buffer: Buffer) {
+        const table = this.getUnpremultiplyTable()
+        const length = buffer.length - (buffer.length % 4)
+
+        // fast path: check alpha 4 bytes at a time, only touch semi-transparent pixels (usually a small share)
+        if (buffer.byteOffset % 4 === 0 && os.endianness() === "LE") {
+            const pixels = new Uint32Array(buffer.buffer, buffer.byteOffset, length / 4)
+            for (let i = 0; i < pixels.length; i++) {
+                const a = pixels[i] >>> 24
+                if (a === 0 || a === 255) continue
+                const o = i * 4
+                const row = a * 256
+                buffer[o] = table[row + buffer[o]]
+                buffer[o + 1] = table[row + buffer[o + 1]]
+                buffer[o + 2] = table[row + buffer[o + 2]]
+            }
+            return
+        }
+
+        for (let o = 0; o < length; o += 4) {
+            const a = buffer[o + 3]
+            if (a === 0 || a === 255) continue
+            const row = a * 256
+            buffer[o] = table[row + buffer[o]]
+            buffer[o + 1] = table[row + buffer[o + 1]]
+            buffer[o + 2] = table[row + buffer[o + 2]]
+        }
     }
 
     private static getPaddedBuffer(senderData: any, buffer: Buffer, size: { width: number; height: number }, stride: number, paddedWidth: number): Buffer {

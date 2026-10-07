@@ -530,7 +530,17 @@ const initalOutputData = {
     VOLUME: "volume"
 }
 
-export function sendInitialOutputData() {
+// FreeShow Church: target = the output window that asked (only it gets the data; others are already up to date)
+export function sendInitialOutputData(target = "") {
+    const sendTo = (channel: string, data: any) => {
+        if (target) window.api.send(OUTPUT, { channel, data, target })
+        else send(OUTPUT, [channel], data)
+    }
+
+    // the outputs list first, so the window knows right away which output (and stage layout) it is
+    sendTo("OUTPUTS", get(outputs))
+    sendTo("ALL_OUTPUTS", get(outputs))
+
     Object.keys(initalOutputData).forEach((KEY) => {
         const storeKey = initalOutputData[KEY]
 
@@ -539,12 +549,12 @@ export function sendInitialOutputData() {
         else storeData = get($[storeKey])
         if (storeData === undefined) storeData = {}
 
-        send(OUTPUT, [KEY], storeData)
+        sendTo(KEY, storeData)
     })
 
     setTimeout(() => {
-        send(OUTPUT, ["OUTPUTS"], get(outputs))
+        sendTo("OUTPUTS", get(outputs))
         // used for stage mirror data
-        send(OUTPUT, ["ALL_OUTPUTS"], get(outputs))
+        sendTo("ALL_OUTPUTS", get(outputs))
     }, 100)
 }

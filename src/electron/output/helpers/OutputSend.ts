@@ -11,6 +11,7 @@ export class OutputSend {
 
         function sendToWindow(output: Output & { id: string }) {
             if ((msg.data?.id && msg.data.id !== output.id) || !output?.window || output.window.isDestroyed()) return
+            if (msg.target && msg.target !== output.id) return
 
             let tempMsg: Message = clone(msg)
             if (msg.channel === "OUTPUTS") tempMsg = onlySendToMatchingId(tempMsg, output.id)

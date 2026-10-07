@@ -2,6 +2,8 @@ export interface Message {
     channel: string
     data?: any
     id?: string
+    // FreeShow Church: only deliver to this output window (initial data for a newly opened output)
+    target?: string
 
     name?: string
     path?: string

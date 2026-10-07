@@ -175,7 +175,7 @@ const receiveOUTPUTasMAIN: any = {
         })
         if (autoSave) save()
     },
-    REQUEST_DATA_MAIN: () => sendInitialOutputData(),
+    REQUEST_DATA_MAIN: (data: { requester?: string } | null) => sendInitialOutputData(data?.requester || ""),
     MAIN_LOG: (msg: any) => console.info(msg),
     ALERT_MAIN: (data: string) => {
         if (!data) return

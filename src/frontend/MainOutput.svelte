@@ -37,6 +37,12 @@
             loaded = true
         }, 2000)
     })
+    // FreeShow Church: start as soon as this window knows which output it is (and so whether it's a stage
+    // output) instead of always waiting 2 seconds - a new output showed black for that long
+    let loadTimer: NodeJS.Timeout | null = null
+    $: if (!loaded && !loadTimer && outputId && $outputs[outputId]) {
+        loadTimer = setTimeout(() => (loaded = true), 60)
+    }
 </script>
 
 <div

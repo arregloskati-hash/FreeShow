@@ -98,6 +98,10 @@
     }
 
     $: styleId = currentOutput?.style || ""
+    // FreeShow Church: layers the chosen style turns off
+    const LAYER_NAMES = { background: "Background", slide: "Slide", overlays: "Overlays" }
+    $: styleLayers = Array.isArray($styles[styleId]?.layers) ? ($styles[styleId].layers as string[]) : null
+    $: hiddenLayers = styleLayers ? Object.keys(LAYER_NAMES).filter((key) => !styleLayers!.includes(key)).map((key) => LAYER_NAMES[key]) : []
     function editStyle() {
         activeStyle.set(styleId)
         settingsTab.set("styles")
@@ -344,6 +348,13 @@
             <MaterialButton title="titlebar.edit" icon="edit" on:click={editStyle} />
         {/if}
     </InputRow>
+    <!-- FreeShow Church: make hidden layers obvious (a lyrics/NDI style on a screen output hides all videos) -->
+    {#if hiddenLayers.length}
+        <p class="churchLayerHint">
+            This style hides: <b>{hiddenLayers.join(", ")}</b>{hiddenLayers.includes("Background") ? " — videos and images won't show on this output." : "."}
+            <span role="button" tabindex="0" on:click={editStyle} on:keydown={(e) => e.key === "Enter" && editStyle()}>Change</span>
+        </p>
+    {/if}
 {/if}
 
 <!-- WIP toggle fullscreen (Mac) ?? Only working one time for some reason -->
@@ -505,6 +516,23 @@
 {/if}
 
 <style>
+    .churchLayerHint {
+        margin: 2px 0 8px;
+        padding: 8px 12px;
+        border-radius: 8px;
+        font-size: 0.8em;
+        color: #ffb347;
+        background-color: rgb(255 179 71 / 0.1);
+        white-space: normal;
+        overflow: visible;
+        text-overflow: clip;
+        line-height: 1.4;
+    }
+    .churchLayerHint span {
+        margin-left: 6px;
+        text-decoration: underline;
+        cursor: pointer;
+    }
     .hint {
         padding: 0 10px 10px;
         font-size: 0.8em;

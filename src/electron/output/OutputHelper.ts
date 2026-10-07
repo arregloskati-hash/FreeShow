@@ -41,6 +41,12 @@ export class OutputHelper {
             FOCUS: (data: { id: string }) => OutputHelper.Lifecycle.focusOutput(data.id)
         }
 
+        // FreeShow Church: tell the main window which output asked for its data, so only that window gets it
+        // (before, every new or reloaded output made ALL outputs receive and re-render everything)
+        if (msg.channel === "REQUEST_DATA_MAIN") {
+            const requester = OutputHelper.getAllOutputs().find((output) => output.window && !output.window.isDestroyed() && output.window.webContents === _e.sender)?.id
+            return toApp(OUTPUT, { ...msg, data: { requester: requester || "" } })
+        }
         if (msg.channel.includes("MAIN")) return toApp(OUTPUT, msg)
         if (msg.channel in outputResponses) return outputResponses[msg.channel as keyof typeof outputResponses](msg.data)
 

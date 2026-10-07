@@ -1,4 +1,5 @@
 import { get } from "svelte/store"
+import { checkBackgroundVisible, checkVideoPlayable } from "../../church/mediaChecks"
 import { uid } from "uid"
 import { OUTPUT } from "../../../types/Channels"
 import { Main } from "../../../types/IPC/Main"
@@ -67,6 +68,24 @@ export function setOutput(type: string, data: any, toggle = false, outputId = ""
     const bindings = data?.bindings || (data?.layout ? ref[data.index]?.data?.bindings || [] : [])
     const allOutputIds = bindings.length ? bindings : getActiveOutputs(get(outputs), true, false, true)
     const outs = outputId ? [outputId] : allOutputIds
+
+    // FreeShow Church: tell the user right away when a background won't show (hidden layer / unplayable codec)
+    if (type === "background" && data) {
+        const checkData = clone(data)
+        const previous = outs.map((id) => ({ id, background: clone(get(outputs)[id]?.out?.background || null) }))
+        setTimeout(async () => {
+            const playable = checkData.path ? await checkVideoPlayable(checkData.path) : true
+            if (!playable) {
+                // keep what was showing instead of going black
+                previous.forEach(({ id, background }) => {
+                    if (get(outputs)[id]?.out?.background?.path !== checkData.path) return
+                    setOutput("background", background, false, id)
+                })
+                return
+            }
+            checkBackgroundVisible(outs, checkData)
+        }, 50)
+    }
 
     // track usage (& set attributionString)
     if (type === "slide" && data?.id) {
