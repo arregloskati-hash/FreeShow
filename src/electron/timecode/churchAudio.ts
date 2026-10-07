@@ -44,11 +44,16 @@ function getInstance(role: "list" | "input" | "output") {
     return instances[role]
 }
 
+// RtAudio keeps its device list from when an instance was created (channel changes, e.g. in Loopback, aren't
+// seen), so every listing/open probes with a NEW instance. Those are kept forever too (see above) - they are tiny.
+const probes: any[] = []
 function getDevices(): DeviceInfo[] {
-    const rt = getInstance("list")
-    if (!rt) return []
+    const Rt = getRtAudio()
+    if (!Rt) return []
     try {
-        return rt.getDevices() as DeviceInfo[]
+        const probe = new Rt()
+        probes.push(probe)
+        return probe.getDevices() as DeviceInfo[]
     } catch (err) {
         console.error("Timecode audio devices:", err)
         return []
@@ -98,8 +103,10 @@ export function configureChurchInput(config: InputConfig) {
     const device = getDevices().find((d) => d.name === config.device && d.inputChannels > 0)
     if (!device) return (inputStatus = { ...inputStatus, error: "Device not connected" })
 
+    // a failing openStream aborts Electron (audify bug), so only ever ask for what the device reports right now
     const nChannels = device.inputChannels
     const sampleRate = pickSampleRate(device)
+    if (!nChannels || (device.sampleRates?.length && !device.sampleRates.includes(sampleRate))) return (inputStatus = { ...inputStatus, error: "Unsupported device format" })
     const used = config.channels.map((ch, i) => ({ input: i + 1, ch })).filter((a) => a.ch >= 0 && a.ch < nChannels)
 
     try {
@@ -194,6 +201,7 @@ export function configureChurchOutput(config: OutputConfig) {
 
     const nChannels = device.outputChannels
     const sampleRate = pickSampleRate(device)
+    if (!nChannels || (device.sampleRates?.length && !device.sampleRates.includes(sampleRate))) return (outputStatus = { ...outputStatus, error: "Unsupported device format" })
     try {
         rt.openStream(
             { deviceId: device.id, nChannels, firstChannel: 0 },
