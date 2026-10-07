@@ -70,7 +70,10 @@
         let actualValue = hexValue
 
         if (opacity === 0 && clicked) opacity = 100
-        if (allowOpacity && opacity < 100) {
+        // FreeShow Church: a gradient keeps its stop colors (with their alpha), so going back to 100% has to reset it too
+        if (allowOpacity && hexValue.includes("gradient") && (opacity < 100 || getGradientOpacity(hexValue) < 1)) {
+            actualValue = addOpacityToGradient(hexValue, opacity / 100)
+        } else if (allowOpacity && opacity < 100) {
             if (hexValue.includes("gradient")) actualValue = addOpacityToGradient(hexValue, opacity / 100)
             else {
                 const rgb = hexToRgb(hexValue)

@@ -6,30 +6,40 @@ import { hexToRgb } from "../../helpers/color"
 
 // COLOR
 
-// Add opacity to each color stop in the gradient (hex, rgb, and rgba)
+// Add opacity to each color stop in the gradient (hex, rgb/rgba in comma or space syntax, hsl/hsla)
+// FreeShow Church: also handles "rgb(255 0 0)" / "rgb(255 0 0 / 0.5)" (used by custom gradients) and decimals
+const GRADIENT_COLOR_REGEX = /(#[0-9a-fA-F]{3,8}\b|rgba?\([^)]*\)|hsla?\([^)]*\))/g
+function colorNumbers(color: string) {
+    return color
+        .slice(color.indexOf("(") + 1, color.lastIndexOf(")"))
+        .replace("/", " ")
+        .split(/[\s,]+/)
+        .map((a) => a.trim())
+        .filter(Boolean)
+}
 export function addOpacityToGradient(gradientValue: string, alpha: number) {
-    return gradientValue.replace(/(#[0-9a-fA-F]{3,8}|rgba?\(\s*\d+\s*,\s*\d+\s*,\s*\d+(?:\s*,\s*\d*\.?\d+)?\s*\))/g, (color) => {
+    return gradientValue.replace(GRADIENT_COLOR_REGEX, (color) => {
         if (color.startsWith("#")) {
             const rgb = hexToRgb(color)
-            if (rgb) {
-                return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${alpha})`
-            }
+            if (rgb) return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${alpha})`
+            return color
         }
-        // Match rgb or rgba and replace with new alpha
-        const nums = color.match(/\d+\.?\d*/g)
-        if (nums && nums.length >= 3) {
-            return `rgba(${nums[0]}, ${nums[1]}, ${nums[2]}, ${alpha})`
-        }
-        return color
+
+        const nums = colorNumbers(color)
+        if (nums.length < 3) return color
+        if (color.toLowerCase().startsWith("hsl")) return `hsla(${nums[0]}, ${nums[1]}, ${nums[2]}, ${alpha})`
+        return `rgba(${nums[0]}, ${nums[1]}, ${nums[2]}, ${alpha})`
     })
 }
 
-// Get the first rgb(a) alpha value from a gradient string
+// Get the first color stop's alpha value from a gradient string
 export function getGradientOpacity(gradientValue: string): number {
-    // Match rgba(...) or rgb(...)
-    const match = gradientValue.match(/rgba?\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*(?:,\s*(\d*\.?\d+))?\s*\)/)
-    if (match?.[1] === undefined) return 1
-    return parseFloat(match[1])
+    const match = gradientValue.match(/(rgba?|hsla?)\([^)]*\)/i)
+    if (!match) return 1
+    const nums = colorNumbers(match[0])
+    if (nums.length < 4) return 1
+    const alpha = nums[3].endsWith("%") ? parseFloat(nums[3]) / 100 : parseFloat(nums[3])
+    return isNaN(alpha) ? 1 : Math.max(0, Math.min(1, alpha))
 }
 
 // valueIndex splits

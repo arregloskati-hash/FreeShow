@@ -517,6 +517,16 @@
                 // remove custom font size
                 let customIndex = style.indexOf("--custom")
                 if (customIndex > -1) style = style.slice(0, customIndex)
+                // FreeShow Church: a span the browser made itself (merging lines with backspace/delete) carries the
+                // computed look, not the real text style - a gradient then became black or invisible. Every span the
+                // editor renders has the "--custom" marker, so use the neighbouring text's real style for these.
+                else if (!plain && style) {
+                    const previousStyle = newLines[pos].text[newLines[pos].text.length - 1]?.style
+                    const sourceStyle = item.lines?.[sourceLine]?.text?.[0]?.style
+                    if (previousStyle !== undefined) style = previousStyle
+                    else if (sourceStyle !== undefined) style = sourceStyle
+                    else style = style.replace(/(caret-color|-webkit-background-clip|background-clip|box-decoration-break|-webkit-box-decoration-break)\s*:[^;]*;?/gi, "").replace(/(^|;)\s*color\s*:\s*transparent\s*;?/gi, "$1")
+                }
 
                 // GET custom values
                 let customType = child.getAttribute("data-customtype") || undefined

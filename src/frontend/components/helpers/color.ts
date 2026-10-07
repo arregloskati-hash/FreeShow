@@ -176,9 +176,17 @@ export function splitGradientValue(gradientStr: string) {
 
     // linear-gradient: optional angle
     if (result.type === "linear-gradient") {
-        const angle = parts[0]?.match(/^(\d+(?:\.\d+)?)deg$/i)
+        // FreeShow Church: also negative/decimal angles, turn units and "to right"-style directions
+        // (these were read as a color stop before, which broke the gradient)
+        const DIRECTIONS: { [key: string]: number } = { "to top": 0, "to top right": 45, "to right top": 45, "to right": 90, "to bottom right": 135, "to right bottom": 135, "to bottom": 180, "to bottom left": 225, "to left bottom": 225, "to left": 270, "to top left": 315, "to left top": 315 }
+        const first = (parts[0] || "").trim().toLowerCase()
+        const angle = first.match(/^(-?\d+(?:\.\d+)?)(deg|turn)$/)
         if (angle) {
-            result.deg = parseFloat(angle[1])
+            const value = parseFloat(angle[1]) * (angle[2] === "turn" ? 360 : 1)
+            result.deg = ((value % 360) + 360) % 360
+            parts.shift()
+        } else if (DIRECTIONS[first.replace(/\s+/g, " ")] !== undefined) {
+            result.deg = DIRECTIONS[first.replace(/\s+/g, " ")]
             parts.shift()
         } else {
             result.deg = 180
@@ -187,9 +195,14 @@ export function splitGradientValue(gradientStr: string) {
 
     // radial-gradient: optional shape
     if (result.type === "radial-gradient") {
-        const shape = parts[0]?.toLowerCase()
-        if (shape === "circle" || shape === "ellipse") {
-            result.shape = shape
+        const shape = parts[0]?.toLowerCase().trim() || ""
+        // (also "circle at center", "ellipse farthest-corner at 50% 50%", "at top left")
+        const firstWord = shape.split(/\s+/)[0]
+        if (firstWord === "circle" || firstWord === "ellipse") {
+            result.shape = firstWord
+            parts.shift()
+        } else if (shape.startsWith("at ") || /^(closest|farthest)-(side|corner)/.test(shape)) {
+            result.shape = "ellipse"
             parts.shift()
         } else {
             result.shape = "ellipse"

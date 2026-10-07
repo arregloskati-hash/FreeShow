@@ -4,6 +4,7 @@ import { styles } from "../../../stores"
 import { clone } from "../../helpers/array"
 import { getFirstActiveOutput } from "../../helpers/output"
 import { getStyles } from "../../helpers/style"
+import { getGradientTextCss } from "../../../church/textGradient"
 import { getItemText } from "../scripts/textStyle"
 
 export class EditboxHelper {
@@ -234,23 +235,16 @@ export class EditboxHelper {
     }
 
     static getCustomTextStyle(style: string) {
-        if (!style) return ""
+        // (always add the "--custom" marker: spans without it were created by the browser, see EditboxLines)
+        if (!style) return "--custom:true;"
 
         // fix quotes (for font family names with spaces)
         style = style.replaceAll('"', "'")
 
         // text gradient
-
-        if (style.includes("-gradient")) {
-            // can't edit properly when this is applied in the editor
-            // let styles = getStyles(style)
-            // styles.color = extractPlainColorFromGradient(styles.color)
-            // let newStyles = ""
-            // Object.entries(styles).forEach((key, value) => {
-            //     newStyles += `${key}: ${value};`
-            // })
-            // style = newStyles
-        }
+        // FreeShow Church: show the gradient while editing too. Everything after "--custom:true" is display-only
+        // (it's cut off again when the edited text is read back), so the saved style stays unchanged.
+        const gradientCss = getGradientTextCss(style, true)
 
         // custom font size ratio
 
@@ -259,7 +253,7 @@ export class EditboxHelper {
         // get first output style
         const currentOutput = getFirstActiveOutput()
         const outputStyle = get(styles)[currentOutput?.style || ""] || {}
-        if (!Object.keys(outputStyle).length) return style
+        if (!Object.keys(outputStyle).length) return `${style};--custom:true;${gradientCss}`
 
         const customFontSizeRatio = (outputStyle.aspectRatio?.fontSizeRatio ?? 100) / 100
 
@@ -267,7 +261,7 @@ export class EditboxHelper {
         // let customIndex = style.indexOf("--custom")
         // if (customIndex > -1) style = style.slice(0, customIndex)
 
-        return `${style};--custom:true;font-size: ${fontSize * customFontSizeRatio}px;`
+        return `${style};--custom:true;font-size: ${fontSize * customFontSizeRatio}px;${gradientCss}`
     }
 }
 

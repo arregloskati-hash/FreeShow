@@ -1114,6 +1114,10 @@ function applyMixedTextFormatting(style: string, textStyle: string | undefined, 
     if (textFormatSets.colors.size > 1) {
         const textColor = textStyles.color || "#FFFFFF"
         style += `color: ${textColor};`
+    } else if (/-gradient\(/i.test(textStyles.color || "")) {
+        // FreeShow Church: a gradient text color is a deliberate effect - keep it when the template is re-applied
+        // (before, it silently went back to the template color every time the show was opened)
+        style += `color: ${textStyles.color};`
     }
 
     if (textFormatSets.bold.size > 1) {
