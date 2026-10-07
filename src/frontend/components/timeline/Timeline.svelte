@@ -4,7 +4,7 @@
     import { uid } from "uid"
     import type { TimelineAction } from "../../../types/Show"
     import { createWaveform } from "../../audio/audioWaveform"
-    import { activeEdit, activePopup, activeShow, activeTriggerFunction, dictionary, resized, selected, showsCache, special, timecode, timeline as timelineStore } from "../../stores"
+    import { activeEdit, activePopup, activeShow, activeTriggerFunction, dictionary, resized, selected, showsCache, timecode, timeline as timelineStore } from "../../stores"
     import { DEFAULT_WIDTH } from "../../utils/common"
     import { translateText } from "../../utils/language"
     import { actionData } from "../actions/actionData"
@@ -16,7 +16,9 @@
     import TimelineEasing from "./TimelineEasing.svelte"
     import { formatTime, getActionsAtPosition, getProjectShowDurations, getTickInterval, getTimelineSections, parseTime, TIMELINE_SECTION_GAP, TIMELINE_SECTION_HEIGHT, TIMELINE_SECTION_TOP, timelineSections, timelineZoom } from "./timeline"
     import { TimelineActions, type TimelineType } from "./TimelineActions"
-    import { getActiveTimelinePlayback, TimelinePlayback } from "./TimelinePlayback"
+    import { getActiveTimelinePlayback, showTimelinePlayers, TimelinePlayback } from "./TimelinePlayback"
+    import TimecodeSource from "../../church/timecode/TimecodeSource.svelte"
+    import { getSongTimecode, updateSongTimeline } from "../../church/timecode/timecodeShared"
 
     export let type: TimelineType
     export let isClosed: boolean = false
@@ -51,6 +53,13 @@
     let isDestroyed = false
 
     const player = new TimelinePlayback(type)
+    // FreeShow Church: the open song timeline (timecode chase drives this one)
+    if (type === "show") showTimelinePlayers.add(player)
+    onDestroy(() => showTimelinePlayers.delete(player))
+
+    // FreeShow Church: song timeline - fixed lanes like a media timeline (text, media, audio, actions)
+    const SHOW_LANES = ["slide", "video", "audio", "action"]
+    const SHOW_LANE_ICONS = { slide: "text", video: "image", audio: "music", action: "settings" }
 
     let shouldLoop: boolean = false
     const timeline = new TimelineActions(type, async (a, data) => {
@@ -64,6 +73,7 @@
         actions = a
         player.setActions(a)
         tabIds = getTimelineSections(sections, a)
+        if (type === "show") tabIds = SHOW_LANES.filter((id) => sections[id])
 
         // group based on type
         if (type !== "slide") return
@@ -100,7 +110,7 @@
         autoFollow = true
 
         // start recording if at beginning and no actions
-        if (currentTime === 0 && !actions.length && !isRecording) toggleRecording()
+        if (currentTime === 0 && !actions.length && !isRecording && !player.externalSync) toggleRecording()
     })
     player.onPause(() => {
         isPlaying = false
@@ -152,9 +162,56 @@
     let selectionRect: { x: number; y: number; w: number; h: number } | null = null
     let selectionStart = { x: 0, y: 0 }
 
-    let usedHeaderWidth = 120
+    let usedHeaderWidth = type === "show" ? 42 : 120
 
-    $: timeString = formatTime(currentTime, type, $timelineStore)
+    // FreeShow Church: song timecode (offset shown on the ruler/time when on)
+    $: songShowId = type === "show" ? $activeShow?.id || "" : ""
+    $: songLayoutId = songShowId ? $showsCache[songShowId]?.settings?.activeLayout || "" : ""
+    $: songTimeline = songShowId ? ($showsCache[songShowId]?.layouts?.[songLayoutId]?.timeline as any) : null
+    $: songTc = getSongTimecode(songTimeline)
+    $: displayOffset = type === "show" && songTc.enabled ? songTc.offset : 0
+    $: offsetString = formatTime(songTc.offset, null)
+
+    function setSongTimecode(values: any) {
+        if (!songShowId || !songLayoutId) return
+        updateSongTimeline(songShowId, songLayoutId, { timecode: values })
+    }
+    function changeOffset(e: Event) {
+        const input = e.target as HTMLInputElement
+        const ms = parseTime(input.value)
+        if (!isNaN(ms)) setSongTimecode({ offset: Math.max(0, ms) })
+        input.value = formatTime(isNaN(ms) ? songTc.offset : Math.max(0, ms), null)
+        input.blur()
+    }
+    function changeDuration(e: Event) {
+        const input = e.target as HTMLInputElement
+        const value = Math.round(Number(input.value.replace(/[^0-9.]/g, "")))
+        if (songShowId && songLayoutId && value > 0) {
+            updateSongTimeline(songShowId, songLayoutId, { duration: Math.min(value, 24 * 3600) })
+            player.updateDuration()
+        }
+        input.value = Math.round(timelineDuration / 1000) + "s"
+        input.blur()
+    }
+
+    // zoom slider (log scale)
+    const ZOOM_MIN = 6
+    const ZOOM_MAX = 1000
+    $: zoomSlider = Math.round((Math.log(zoomLevel / ZOOM_MIN) / Math.log(ZOOM_MAX / ZOOM_MIN)) * 100)
+    async function setZoomSlider(e: Event) {
+        const v = Number((e.target as HTMLInputElement).value)
+        zoomLevel = ZOOM_MIN * Math.pow(ZOOM_MAX / ZOOM_MIN, v / 100)
+        await tick()
+        centerPlayhead()
+    }
+
+    function toStart() {
+        if (isPlaying) player.setTime(0)
+        else player.stop()
+        centerPlayhead()
+    }
+
+    $: timeString = formatTime(currentTime + displayOffset, type, $timelineStore)
     $: tickInterval = getTickInterval(zoomLevel)
     $: snapInterval = (tickInterval * 1000) / 10
 
@@ -555,7 +612,8 @@
 
     function handleTimeChange(e: Event) {
         const input = (e.target as HTMLInputElement).value
-        const ms = parseTime(input)
+        let ms = parseTime(input)
+        if (displayOffset && ms >= displayOffset) ms -= displayOffset
         let time = currentTime
 
         if (!isNaN(ms)) {
@@ -566,7 +624,7 @@
 
         // Force update input value in case it was invalid or clamped
         const target = e.target as HTMLInputElement
-        target.value = formatTime(time, type)
+        target.value = formatTime(time + displayOffset, type)
         target.blur()
     }
 
@@ -612,7 +670,7 @@
         if (e.key !== " " || e.repeat) return
 
         const active = getActiveTimelinePlayback()
-        if (active ? active !== player : type === "show" && $special.projectTimelineActive) return
+        if (active && active !== player) return
 
         e.preventDefault()
         if (isPlaying) player.pause()
@@ -770,10 +828,12 @@
             </div>
         {/if} -->
 
-        <div class="timeline-grid">
+        <div class="timeline-grid" class:song={type === "show"} style="--header-width: {usedHeaderWidth}px;">
             <!-- Top Left Corner -->
             <div class="corner" style="width: {usedHeaderWidth}px; border-bottom: 1px solid rgba(255,255,255,0.1); border-right: 1px solid rgba(255,255,255,0.1);">
-                <input class="time-display" value={timeString} on:change={handleTimeChange} on:keydown={handleTimeKeydown} />
+                {#if type !== "show"}
+                    <input class="time-display" value={timeString} on:change={handleTimeChange} on:keydown={handleTimeKeydown} />
+                {/if}
             </div>
 
             <!-- Ruler (Sticky Top) -->
@@ -783,7 +843,7 @@
                         {@const tickIndex = i + visibleTicksStartIndex}
                         {@const pos = tickIndex * tickInterval * zoomLevel}
                         <div class="tick" style="left: {pos}px">
-                            <span class="tick-label">{formatTime(tickIndex * tickInterval * 1000, type, $timelineStore)}</span>
+                            <span class="tick-label">{formatTime(tickIndex * tickInterval * 1000 + displayOffset, type, $timelineStore)}</span>
                         </div>
 
                         <!-- Subticks -->
@@ -817,10 +877,16 @@
                     {:else}
                         {#each Array(maxTrackIndex) as _, i}
                             {@const track = getTrackData(i, actions)}
-                            <div class="track-header" style="top: {TIMELINE_SECTION_TOP + i * (SECTION_HEIGHT + SECTION_GAP)}px;height: {SECTION_HEIGHT}px;width: 100%;{track.hasData ? '' : 'opacity: 0.3;'}">
-                                <Icon id={track.icon} white />
-                                <span class="track-name">{translateText(track.name)}</span>
-                            </div>
+                            {#if type === "show"}
+                                <div class="track-header icon-only" style="top: {TIMELINE_SECTION_TOP + i * (SECTION_HEIGHT + SECTION_GAP)}px;height: {SECTION_HEIGHT}px;width: 100%;{track.hasData ? '' : 'opacity: 0.45;'}" data-title={translateText(track.name)}>
+                                    <Icon id={SHOW_LANE_ICONS[tabIds[i]] || track.icon} white />
+                                </div>
+                            {:else}
+                                <div class="track-header" style="top: {TIMELINE_SECTION_TOP + i * (SECTION_HEIGHT + SECTION_GAP)}px;height: {SECTION_HEIGHT}px;width: 100%;{track.hasData ? '' : 'opacity: 0.3;'}">
+                                    <Icon id={track.icon} white />
+                                    <span class="track-name">{translateText(track.name)}</span>
+                                </div>
+                            {/if}
                         {/each}
                     {/if}
                 </div>
@@ -844,6 +910,13 @@
                             {/if}
                         {/each}
                     </div>
+
+                    <!-- FreeShow Church: coloured lanes -->
+                    {#if type === "show"}
+                        {#each tabIds as laneId, i}
+                            <div class="lane lane-{laneId}" style="top: {TIMELINE_SECTION_TOP + i * (SECTION_HEIGHT + SECTION_GAP) - SECTION_GAP / 2}px;height: {SECTION_HEIGHT + SECTION_GAP}px;"></div>
+                        {/each}
+                    {/if}
 
                     <!-- Slide Action Bar -->
                     {#if firstSlideAction}
@@ -911,7 +984,42 @@
             </div>
         </div>
 
-        {#if easingActive === null || type !== "slide"}
+        {#if type === "show"}
+            <!-- FreeShow Church: song timeline bar (transport · timecode · duration · zoom) -->
+            <div class="songBar">
+                <div class="transport">
+                    <button data-title="Back to start" on:click={toStart}><Icon id="previous" size={0.95} white /></button>
+                    <button data-title={isPlaying ? "Pause" : "Play"} class:on={isPlaying} on:click={() => (isPlaying ? player.pause() : ((player.externalSync = false), player.play()))}><Icon id={isPlaying ? "pause" : "play"} size={0.95} white /></button>
+                    <button data-title={isRecording ? "Stop recording" : "Record slide changes"} class="rec" class:recording={isRecording} disabled={isPlaying && !isRecording} on:click={toggleRecording}><span class="recDot"></span></button>
+                    <button data-title="Loop" class:on={shouldLoop} on:click={() => (shouldLoop = timeline.toggleLoop())}><Icon id="loop" size={0.95} white /></button>
+                </div>
+
+                <input class="nowInput" value={timeString} data-title="Current time" on:change={handleTimeChange} on:keydown={handleTimeKeydown} />
+
+                <div class="center">
+                    <label class="tcToggle" data-title="Follow incoming SMPTE timecode (and send it with this offset)">
+                        <input type="checkbox" checked={songTc.enabled} on:change={(e) => setSongTimecode({ enabled: e.currentTarget.checked })} />
+                        <span>Timecode</span>
+                    </label>
+                    <input class="tcInput" class:dim={!songTc.enabled} value={offsetString} data-title="Timecode offset (start of this song)" on:change={changeOffset} on:keydown={handleTimeKeydown} />
+
+                    <div class="inputPick" class:dim={!songTc.enabled} data-title="SMPTE input">
+                        <button class:active={songTc.input === 1} on:click={() => setSongTimecode({ input: 1 })}>1</button>
+                        <button class:active={songTc.input === 2} on:click={() => setSongTimecode({ input: 2 })}>2</button>
+                    </div>
+
+                    <div class="srcWrap"><TimecodeSource input={songTc.input} compact /></div>
+
+                    <span class="lbl">Duration</span>
+                    <input class="durInput" value={Math.round(timelineDuration / 1000) + "s"} data-title="Song timeline length" on:change={changeDuration} on:keydown={handleTimeKeydown} />
+                </div>
+
+                <div class="zoom">
+                    <span class="zoomIcon">↔</span>
+                    <input type="range" min="0" max="100" value={zoomSlider} on:input={setZoomSlider} aria-label="Zoom" />
+                </div>
+            </div>
+        {:else if easingActive === null || type !== "slide"}
             <FloatingInputs side="left" style="margin-bottom: 8px;margin-left: 120px;">
                 {#if disablePlayback}
                     <MaterialButton style="min-width: 40px;padding: 10px;" title={isPlaying ? "media.stop" : "media.play"} on:click={() => (isPlaying ? player.pause() : player.play())}>
@@ -927,7 +1035,7 @@
                     </MaterialButton>
                 {/if}
 
-                {#if type === "show"}
+                {#if false}
                     <div class="divider"></div>
 
                     <MaterialButton disabled={isPlaying && !isRecording} title="actions.{isRecording ? 'stop_recording' : 'start_recording'}" on:click={toggleRecording} red={isRecording}>
@@ -988,6 +1096,216 @@
     }
     .time-display:focus {
         border-color: var(--focus);
+    }
+
+    /* FreeShow Church: song timeline */
+    .timeline-grid.song {
+        height: auto;
+        flex: 1;
+        min-height: 0;
+    }
+    .track-header.icon-only {
+        justify-content: center;
+        padding-left: 0;
+    }
+    .lane {
+        position: absolute;
+        left: 0;
+        right: 0;
+        pointer-events: none;
+        border-bottom: 1px solid rgb(0 0 0 / 0.35);
+    }
+    .lane-slide {
+        background-color: rgb(70 82 130 / 0.32);
+    }
+    .lane-video {
+        background-color: rgb(120 70 120 / 0.28);
+    }
+    .lane-audio {
+        background-color: rgb(70 120 80 / 0.26);
+    }
+
+    .songBar {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        height: 36px;
+        padding: 0 10px;
+        flex-shrink: 0;
+        background-color: var(--primary-darkest, rgb(0 0 0 / 0.25));
+        border-top: 1px solid rgb(255 255 255 / 0.06);
+        font-size: 0.85em;
+        overflow-x: auto;
+        overflow-y: hidden;
+        scrollbar-width: none;
+    }
+    .songBar::-webkit-scrollbar {
+        display: none;
+    }
+    .songBar button {
+        font-family: inherit;
+        color: var(--text);
+        border: none;
+        background: transparent;
+        cursor: pointer;
+    }
+
+    .transport {
+        display: flex;
+        flex-shrink: 0;
+        border-radius: 6px;
+        overflow: hidden;
+        background-color: rgb(255 255 255 / 0.06);
+    }
+    .transport button {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 30px;
+        height: 24px;
+        opacity: 0.8;
+    }
+    .transport button + button {
+        border-left: 1px solid rgb(0 0 0 / 0.35);
+    }
+    .transport button:hover:not(:disabled) {
+        opacity: 1;
+        background-color: rgb(255 255 255 / 0.08);
+    }
+    .transport button.on {
+        opacity: 1;
+        background-color: color-mix(in srgb, var(--secondary) 35%, transparent);
+    }
+    .transport button:disabled {
+        opacity: 0.3;
+        cursor: default;
+    }
+    .recDot {
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        background-color: #e0403a;
+    }
+    .rec.recording .recDot {
+        box-shadow: 0 0 7px #ff4a43;
+        animation: recBlink 1s infinite;
+    }
+    @keyframes recBlink {
+        50% {
+            opacity: 0.35;
+        }
+    }
+
+    .center {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        min-width: 0;
+    }
+    .tcToggle {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        cursor: pointer;
+        flex-shrink: 0;
+    }
+    .tcToggle input {
+        width: 14px;
+        height: 14px;
+        accent-color: var(--secondary);
+        cursor: pointer;
+    }
+    .nowInput {
+        width: 132px;
+        padding: 2px 6px;
+        border: none;
+        outline: none;
+        background: transparent;
+        color: var(--text);
+        font-family: monospace;
+        font-size: 1.15em;
+        font-weight: 600;
+        font-variant-numeric: tabular-nums;
+        text-align: center;
+        flex-shrink: 0;
+    }
+    .nowInput:focus {
+        background-color: rgb(0 0 0 / 0.3);
+        border-radius: 5px;
+    }
+    .tcInput,
+    .durInput {
+        padding: 3px 8px;
+        border-radius: 5px;
+        border: 1px solid rgb(255 255 255 / 0.08);
+        outline: none;
+        background-color: rgb(0 0 0 / 0.3);
+        color: var(--text);
+        font-family: monospace;
+        font-size: 1em;
+        font-variant-numeric: tabular-nums;
+        flex-shrink: 0;
+    }
+    .tcInput {
+        width: 108px;
+        text-align: center;
+    }
+    .durInput {
+        width: 62px;
+    }
+    .tcInput:focus,
+    .durInput:focus {
+        border-color: var(--secondary);
+    }
+    .dim {
+        opacity: 0.45;
+    }
+    .lbl {
+        margin-left: 10px;
+        opacity: 0.75;
+        flex-shrink: 0;
+    }
+
+    .inputPick {
+        display: flex;
+        flex-shrink: 0;
+        border-radius: 5px;
+        overflow: hidden;
+        background-color: rgb(255 255 255 / 0.06);
+    }
+    .inputPick button {
+        width: 22px;
+        height: 22px;
+        font-size: 0.85em;
+        opacity: 0.6;
+    }
+    .inputPick button.active {
+        opacity: 1;
+        font-weight: 600;
+        background-color: color-mix(in srgb, var(--secondary) 40%, transparent);
+    }
+    .srcWrap {
+        flex-shrink: 0;
+    }
+    .zoomIcon {
+        font-size: 1.1em;
+        opacity: 0.8;
+    }
+
+    .zoom {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        flex-shrink: 0;
+        opacity: 0.8;
+    }
+    .zoom input {
+        width: 90px;
+        height: 4px;
+        accent-color: var(--secondary);
+        cursor: pointer;
     }
 
     .timeline-grid {

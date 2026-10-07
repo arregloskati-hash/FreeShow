@@ -395,6 +395,8 @@
                                         <T id="export.data_link" />
                                     </MaterialButton>
 
+                                    <!-- FreeShow Church: project timeline hidden -->
+                                    {#if false}
                                     <div class="DIVIDER"></div>
 
                                     <MaterialButton title="timeline.toggle_timeline" on:click={() => special.update((a) => ({ ...a, projectTimelineActive: !a.projectTimelineActive }))}>
@@ -406,6 +408,7 @@
 
                                         <p><T id="timeline.toggle_timeline" /></p>
                                     </MaterialButton>
+                                    {/if}
 
                                     {#if currentProject.shows?.some((a) => a.type === "section")}
                                         <div class="DIVIDER"></div>

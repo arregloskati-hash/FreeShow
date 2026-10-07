@@ -1,3 +1,4 @@
+import { initTimecodeReceiver } from "../church/timecode/receiver"
 import { startOutputSync } from "../church/outputSync"
 import { get } from "svelte/store"
 import { uid } from "uid"
@@ -140,6 +141,9 @@ export function updateSettings(data: any) {
     })
 
     if (!isMainWindow()) return
+
+    // FreeShow Church: SMPTE timecode input (Settings > Timecode)
+    setTimeout(initTimecodeReceiver, 1500)
 
     // output
     if (data.outputs) {

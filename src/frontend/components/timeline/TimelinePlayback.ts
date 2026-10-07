@@ -19,8 +19,12 @@ import { SlideTimeline } from "./SlideTimeline"
 import { TimelineType } from "./TimelineActions"
 import { startListeningLTC, stopListeningLTC } from "./timecode"
 import { getProjectShowDurations } from "./timeline"
+import { getSongDuration, getSongTimeline } from "../../church/timecode/timecodeShared"
+import { sendSongTime, startSendingTimecode, stopSendingTimecode } from "../../church/timecode/sender"
 
 let activePlayback: TimelinePlayback | null = null
+// FreeShow Church: show timelines currently open in the UI (timecode chase uses the visible one)
+export const showTimelinePlayers = new Set<TimelinePlayback>()
 export function getActiveTimelinePlayback(type: TimelineType | null = null) {
     const active = activePlayback
     if (type !== null && active?.type !== type) return null
@@ -66,6 +70,13 @@ export class TimelinePlayback {
 
     getId() {
         return JSON.stringify(this.ref)
+    }
+
+    // FreeShow Church: driven by incoming timecode (no auto recording, etc.)
+    externalSync: boolean = false
+    setRef(ref: { id: string; layoutId?: string }) {
+        this.ref = ref
+        this.updateDuration()
     }
 
     constructor(type: TimelineType) {
@@ -128,7 +139,7 @@ export class TimelinePlayback {
             if (this.type === "project") {
                 sendMain(Main.TIMECODE_STOP)
                 stopListeningLTC()
-            }
+            } else if (this.type === "show") stopSendingTimecode()
         }
 
         this.isPlaying = false
@@ -148,7 +159,7 @@ export class TimelinePlayback {
             if (this.type === "project") {
                 sendMain(Main.TIMECODE_STOP)
                 stopListeningLTC()
-            }
+            } else if (this.type === "show") stopSendingTimecode()
         }
 
         this.isPlaying = false
@@ -215,6 +226,12 @@ export class TimelinePlayback {
         // at least 5 minutes or 1 minute after last action
         const lastActionTime = this.actions.length > 0 ? Math.max(...this.actions.map((a) => a.time + (a.duration || 0) * 1000)) : 0
         let duration = Math.max(MIN_DURATION, lastActionTime + ONE_MINUTE)
+
+        // FreeShow Church: song timeline length (Duration setting)
+        if (this.type === "show" && this.ref?.id) {
+            const songTimeline = getSongTimeline(this.ref.id, this.ref.layoutId)
+            if (songTimeline) duration = getSongDuration({ ...songTimeline, actions: this.actions })
+        }
 
         // WIP set max duration to audio length if any (and no futher actions)
 
@@ -657,6 +674,8 @@ export class TimelinePlayback {
     // TIMECODE
 
     private initTimecode() {
+        // FreeShow Church: a song following incoming timecode doesn't send it back out (no feedback loops)
+        if (this.type === "show") return this.externalSync ? undefined : startSendingTimecode()
         if (this.type !== "project") return
 
         const type = get(timecode).type || "send"
@@ -679,6 +698,7 @@ export class TimelinePlayback {
 
     private lastSentFrame: number = -1
     private sendTimecode() {
+        if (this.type === "show") return this.externalSync ? undefined : sendSongTime(this.ref, this.currentTime)
         if (this.type !== "project") return
 
         const type = get(timecode).type || "send"

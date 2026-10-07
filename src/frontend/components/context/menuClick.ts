@@ -140,7 +140,7 @@ export function menuClick(id: string, enabled = true, menu: ContextMenuItem | nu
 }
 
 // FreeShow Church: Settings menu helpers
-const CHURCH_SETTINGS_TABS: SettingsTabs[] = ["general", "display_settings", "styles", "audio", "connection", "files", "profiles", "theme", "shortcuts", "other"]
+const CHURCH_SETTINGS_TABS: SettingsTabs[] = ["general", "display_settings", "styles", "audio", "timecode", "connection", "files", "profiles", "theme", "shortcuts", "other"]
 function openChurchSettings(tab: SettingsTabs | null = null) {
     const access = get(profiles)[get(activeProfile) || ""]?.access?.settings || {}
     if (Object.keys(access).length > 7) return // settings locked for this profile

@@ -104,7 +104,8 @@
         </Resizeable>
     </div>
 
-    {#if page === "show" && $special.projectTimelineActive && $activeProject && !$projectView}
+    <!-- FreeShow Church: project timeline hidden (song timelines with timecode offsets replace it) -->
+    {#if false && page === "show" && $special.projectTimelineActive && $activeProject && !$projectView}
         <Resizeable id="project_timeline" side="bottom" maxWidth={DEFAULT_WIDTH} minWidth={40}>
             {#key $activeProject}
                 <Timeline type="project" isClosed={$resized.project_timeline <= 40} />

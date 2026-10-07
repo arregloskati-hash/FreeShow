@@ -1333,6 +1333,7 @@
         "profiles": "Profiles",
         "display_settings": "Outputs",
         "shortcuts": "Shortcuts",
+        "timecode": "Timecode",
         "audio": "Audio",
         "display": "Display",
         "connection": "Connection",

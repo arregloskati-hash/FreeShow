@@ -3,6 +3,7 @@ import { Main } from "../../../types/IPC/Main"
 import { sendMain } from "../../IPC/main"
 import { timecode } from "../../stores"
 import { getActiveTimelinePlayback } from "./TimelinePlayback"
+import { isChurchSender, playLTCFrame } from "../../church/timecode/sender"
 
 export function updateTimelineTime(timeMs: number) {
     const active = getActiveTimelinePlayback("project")
@@ -28,6 +29,11 @@ function getLTCContext(): AudioContext {
 }
 
 export function processTimecodeFrame(buffer: Buffer) {
+    // FreeShow Church: Settings > Timecode sender
+    if (isChurchSender()) {
+        playLTCFrame(buffer as any)
+        return
+    }
     const mode = get(timecode).mode || "LTC"
     if (mode === "LTC") processLTCFrame(buffer)
 }

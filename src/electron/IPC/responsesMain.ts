@@ -234,7 +234,7 @@ export const mainResponses: MainResponses = {
     },
     // Timecode
     [Main.TIMECODE_START]: (data) => timecodeStart(data),
-    [Main.TIMECODE_STOP]: () => timecodeStop(),
+    [Main.TIMECODE_STOP]: (data) => timecodeStop(data),
     [Main.TIMECODE_VALUE]: (data) => updateTimecodeValue(data),
     [Main.TIMECODE_STATUS]: (data) => console.log(data),
     [Main.TIMECODE_AUDIO_DATA]: (data) => processAudioData(data),

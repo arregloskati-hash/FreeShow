@@ -269,9 +269,10 @@ export interface MainSendPayloads {
     [Main.CHECK_MEDIA_LICENSE]: { providerId: ContentProviderId; mediaId: string }
     // Timecode
     [Main.TIMECODE_START]: { type: "send" | "receive"; mode: TimecodeMode; framerate?: number; data?: any }
+    [Main.TIMECODE_STOP]: { type?: "send" | "receive" } | void
     [Main.TIMECODE_VALUE]: number
     [Main.TIMECODE_STATUS]: "play" | "pause" | "stop"
-    [Main.TIMECODE_AUDIO_DATA]: { mode: TimecodeMode; buffer: Uint8Array }
+    [Main.TIMECODE_AUDIO_DATA]: { mode: TimecodeMode; buffer: Uint8Array; input?: number; framerate?: number }
     // Spotify
     [Main.SPOTIFY_GET_STATE]: undefined
     [Main.SPOTIFY_COMMAND]: { command: "playpause" | "next" | "prev" | "seek" | "setVolume" | "pause"; value?: number }
@@ -372,7 +373,7 @@ export interface MainReturnPayloads {
     [Main.GET_PROVIDER_CONTENT]: Promise<ContentFile[]>
     [Main.CHECK_MEDIA_LICENSE]: Promise<MediaLicense | null>
     // Timecode
-    [Main.TIMECODE_VALUE]: number | void
+    [Main.TIMECODE_VALUE]: number | { time: number; input: number } | void
     [Main.TIMECODE_AUDIO_DATA]: Buffer | void
     [Main.TIMECODE_STATUS]: "play" | "pause" | "stop" | void
     // Spotify

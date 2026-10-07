@@ -1,6 +1,6 @@
 import { Main } from "../../types/IPC/Main"
 import { sendMain } from "../IPC/main"
-import { feedLTCFrame, sendLTC, setupLTCListener, stopSendLTC } from "./LTC"
+import { feedChurchLTC, feedLTCFrame, sendLTC, setupLTCListener, stopSendLTC } from "./LTC"
 import { sendMTC, setupMTCListener, stopSendMTC } from "./MTC"
 
 export type TimecodeMode = "LTC" | "MTC" | "ableton"
@@ -22,7 +22,9 @@ export function timecodeStart(data: { type: "send" | "receive"; mode: TimecodeMo
 
 // RECEIVE
 
-export function timecodeStop() {
+export function timecodeStop(data?: { type?: "send" | "receive" } | void) {
+    // FreeShow Church: stop only sending (the timecode input keeps running)
+    if (data && data.type === "send") return stopSendingTimecode()
     stopSendingTimecode()
     stopReceivingTimecode()
 }
@@ -45,7 +47,12 @@ function stopReceivingTimecode() {
     timecodeReceivers = {}
 }
 
-export function processAudioData(data: { mode: TimecodeMode; buffer: Uint8Array }) {
+export function processAudioData(data: { mode: TimecodeMode; buffer: Uint8Array; input?: number; framerate?: number }) {
+    // FreeShow Church: SMPTE input 1/2
+    if (data.input) {
+        feedChurchLTC(data.input, data.framerate || 30, Buffer.from(data.buffer), (time, input) => sendMain(Main.TIMECODE_VALUE, { time, input }))
+        return
+    }
     if (data.mode === "LTC") feedLTCFrame(Buffer.from(data.buffer))
 }
 
@@ -72,6 +79,7 @@ function sendTimecode(mode: TimecodeMode, data: any) {
 function stopSendingTimecode() {
     if (currentMode === "LTC") stopSendLTC()
     else if (currentMode === "MTC") stopSendMTC()
+    currentMode = null
 }
 
 export function updateTimecodeValue(value: number) {

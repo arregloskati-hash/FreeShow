@@ -23,6 +23,7 @@
     import StylesTabs from "./tabs/StylesTabs.svelte"
     import Theme from "./tabs/Theme.svelte"
     import ShortcutsSettings from "../../church/ShortcutsSettings.svelte"
+    import TimecodeSettings from "../../church/timecode/TimecodeSettings.svelte"
     import ThemeButtons from "./tabs/ThemeButtons.svelte"
     import ThemeTabs from "./tabs/ThemeTabs.svelte"
 
@@ -38,6 +39,7 @@
         display_settings: "settings.outputs_hint",
         styles: "settings.styles_hint",
         audio: "settings.audio_hint",
+        timecode: "Receive SMPTE timecode to run song timelines in sync, or send it from the playing song.",
         profiles: "profile.profiles_hint"
     }
 
@@ -90,6 +92,8 @@
             <Profiles />
         {:else if tabId === "theme"}
             <Theme />
+        {:else if tabId === "timecode"}
+            <TimecodeSettings />
         {:else if tabId === "shortcuts"}
             <ShortcutsSettings />
         {:else if tabId === "other"}

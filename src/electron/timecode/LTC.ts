@@ -8,6 +8,39 @@ import { ToMain } from "../../types/IPC/ToMain"
 
 // RECEIVER
 
+// FreeShow Church: one decoder per SMPTE input (audio channel); all frames in a chunk are read (a chunk can hold more than one)
+const churchDecoders: { [input: string]: { decoder: LTCDecoder; framerate: number } } = {}
+let churchDecoderFailed = false
+export function feedChurchLTC(input: number, framerate: number, audioframes: Buffer, onFrame: (timeMs: number, input: number) => void) {
+    if (churchDecoderFailed) return
+    const fps = framerate || 30
+
+    let entry = churchDecoders[input]
+    if (!entry || entry.framerate !== fps) {
+        try {
+            const { LTCDecoder } = require("libltc-wrapper")
+            entry = { decoder: new LTCDecoder(sampleRate, Math.round(fps), "u8") as LTCDecoder, framerate: fps }
+            churchDecoders[input] = entry
+        } catch (error) {
+            console.error("Failed to create LTCDecoder:", error)
+            churchDecoderFailed = true
+            sendToMain(ToMain.ALERT, "Could not start the timecode (LTC) decoder.")
+            return
+        }
+    }
+
+    entry.decoder.write(audioframes)
+
+    let last: any
+    let frame: any
+    let guard = 0
+    while ((frame = entry.decoder.read()) !== undefined && guard++ < 50) last = frame
+    if (!last) return
+
+    const time = last.hours * 3600 + last.minutes * 60 + last.seconds + last.frames / fps
+    onFrame(time * 1000, input)
+}
+
 export function feedLTCFrame(audioframes: Buffer) {
     if (!decoder) return
 

@@ -131,6 +131,7 @@ export class TimelineActions {
 
                 if (!a[showId].layouts[layoutId].timeline) a[showId].layouts[layoutId].timeline = { actions: [] }
                 a[showId].layouts[layoutId].timeline!.actions = clone(this.actions)
+                a[showId].layouts[layoutId].timeline!.loop = this.shouldLoop // FreeShow Church
 
                 return a
             })
@@ -171,7 +172,9 @@ export class TimelineActions {
         if (!this.ref) return
 
         if (this.type === "show") {
-            this.actions = clone(_show(this.ref.id).layouts([this.ref.layoutId]).get()[0]?.timeline?.actions || [])
+            const showTimeline = _show(this.ref.id).layouts([this.ref.layoutId]).get()[0]?.timeline
+            this.actions = clone(showTimeline?.actions || [])
+            this.shouldLoop = !!showTimeline?.loop // FreeShow Church
         } else if (this.type === "project") {
             this.actions = clone(get(projects)[this.ref.id]?.timeline?.actions || [])
         } else if (this.type === "slide") {

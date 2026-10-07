@@ -47,6 +47,7 @@ export const contextMenuItems: { [key: string]: ContextMenuItem } = {
     church_settings_display_settings: { label: "settings.display_settings", icon: "display_settings" },
     church_settings_styles: { label: "settings.styles", icon: "styles" },
     church_settings_audio: { label: "settings.audio", icon: "audio" },
+    church_settings_timecode: { label: "settings.timecode", icon: "timecode" },
     church_settings_connection: { label: "settings.connection", icon: "connection" },
     church_settings_files: { label: "settings.files", icon: "files" },
     church_settings_profiles: { label: "settings.profiles", icon: "profiles" },

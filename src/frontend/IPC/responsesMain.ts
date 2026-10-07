@@ -1,3 +1,4 @@
+import { receiveTimecodeFrame } from "../church/timecode/receiver"
 import { get } from "svelte/store"
 import type { ContentProviderId } from "../../electron/contentProviders/base/types"
 import type { ToMainSendPayloads } from "../../types/IPC/ToMain"
@@ -588,7 +589,7 @@ export const mainResponses: MainResponses = {
         receiveIMPORT[a.channel]()
     },
     // Timecode
-    [Main.TIMECODE_VALUE]: (data) => updateTimelineTime(data!),
+    [Main.TIMECODE_VALUE]: (data) => (typeof data === "object" && data ? receiveTimecodeFrame(data as any) : updateTimelineTime(data as number)),
     [Main.TIMECODE_STATUS]: (data) => updateTimelineStatus(data!),
     [Main.TIMECODE_AUDIO_DATA]: (data) => processTimecodeFrame(data!)
 }
