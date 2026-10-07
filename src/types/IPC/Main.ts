@@ -168,6 +168,10 @@ export enum Main {
     TIMECODE_VALUE = "TIMECODE_VALUE",
     TIMECODE_AUDIO_DATA = "TIMECODE_AUDIO_DATA",
     TIMECODE_STATUS = "TIMECODE_STATUS",
+    // FreeShow Church: native timecode audio I/O
+    CHURCH_AUDIO_DEVICES = "CHURCH_AUDIO_DEVICES",
+    CHURCH_TIMECODE_INPUT = "CHURCH_TIMECODE_INPUT",
+    CHURCH_TIMECODE_OUTPUT = "CHURCH_TIMECODE_OUTPUT",
     // Spotify
     SPOTIFY_GET_STATE = "SPOTIFY_GET_STATE",
     SPOTIFY_COMMAND = "SPOTIFY_COMMAND",
@@ -273,6 +277,9 @@ export interface MainSendPayloads {
     [Main.TIMECODE_VALUE]: number
     [Main.TIMECODE_STATUS]: "play" | "pause" | "stop"
     [Main.TIMECODE_AUDIO_DATA]: { mode: TimecodeMode; buffer: Uint8Array; input?: number; framerate?: number }
+    [Main.CHURCH_AUDIO_DEVICES]: undefined
+    [Main.CHURCH_TIMECODE_INPUT]: { device: string; channels: [number, number]; framerate: number; force?: boolean }
+    [Main.CHURCH_TIMECODE_OUTPUT]: { enabled: boolean; device: string; channel: number; force?: boolean }
     // Spotify
     [Main.SPOTIFY_GET_STATE]: undefined
     [Main.SPOTIFY_COMMAND]: { command: "playpause" | "next" | "prev" | "seek" | "setVolume" | "pause"; value?: number }
@@ -376,6 +383,9 @@ export interface MainReturnPayloads {
     [Main.TIMECODE_VALUE]: number | { time: number; input: number } | void
     [Main.TIMECODE_AUDIO_DATA]: Buffer | void
     [Main.TIMECODE_STATUS]: "play" | "pause" | "stop" | void
+    [Main.CHURCH_AUDIO_DEVICES]: { inputs: { name: string; channels: number }[]; outputs: { name: string; channels: number }[]; error: string }
+    [Main.CHURCH_TIMECODE_INPUT]: { listening: boolean; device: string; channelCount: number; sampleRate: number; error: string }
+    [Main.CHURCH_TIMECODE_OUTPUT]: { open: boolean; device: string; channelCount: number; sampleRate: number; error: string }
     // Spotify
     [Main.SPOTIFY_GET_STATE]: Promise<SpotifyState | null>
     [Main.SPOTIFY_COMMAND]: Promise<boolean>

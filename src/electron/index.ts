@@ -340,6 +340,10 @@ process.on("SIGTERM", () => {
 })
 
 function cleanupBeforeQuit() {
+    // FreeShow Church: native timecode audio threads must stop before quitting (lazy: avoids an import cycle)
+    try {
+        require("./timecode/churchAudio").shutdownChurchAudio()
+    } catch {}
     ipcMain.removeAllListeners()
 
     // Remove window listeners and destroy windows if not already destroyed

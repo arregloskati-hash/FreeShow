@@ -3,41 +3,47 @@
     // Settings > Timecode: receiving (SMPTE in) and sending (SMPTE out), separately.
 
     import { onDestroy, onMount } from "svelte"
-    import { AudioMicrophone } from "../../audio/audioMicrophone"
-    import { AudioPlayer } from "../../audio/audioPlayer"
     import { timecode } from "../../stores"
     import TimecodeSource from "./TimecodeSource.svelte"
-    import { FRAMERATES, getTimecodeSettings, timecodeLive, updateTimecodeSettings } from "./timecodeShared"
+    import { refreshAudioDevices } from "./receiver"
+    import { audioDevices, FRAMERATES, getTimecodeSettings, timecodeLive, timecodeOutStatus, updateTimecodeSettings } from "./timecodeShared"
 
     $: s = getTimecodeSettings($timecode)
 
-    let inputDevices: { value: string; label: string }[] = []
-    let outputDevices: { value: string; label: string; channels: number }[] = []
-
+    // native devices: every channel of every interface
+    let loading = true
     async function loadDevices() {
-        try {
-            inputDevices = (await AudioMicrophone.getList()).map((d) => ({ value: d.deviceId, label: d.label || "Input device" }))
-        } catch {}
-        try {
-            outputDevices = await AudioPlayer.getOutputs()
-        } catch {}
+        await refreshAudioDevices()
+        loading = false
     }
-
     onMount(() => {
         loadDevices()
         navigator.mediaDevices?.addEventListener?.("devicechange", loadDevices)
     })
     onDestroy(() => navigator.mediaDevices?.removeEventListener?.("devicechange", loadDevices))
 
-    // channels of the open input device (2 until it's been opened)
-    $: inChannels = $timecodeLive.listening && $timecodeLive.channelCount ? $timecodeLive.channelCount : 2
+    $: inputDevices = $audioDevices.inputs
+    $: outputDevices = $audioDevices.outputs
+
+    $: inDevice = inputDevices.find((d) => d.name === s.inAudioDevice)
+    $: inChannels = inDevice?.channels || $timecodeLive.channelCount || 2
     $: inChannelOptions = Array.from({ length: Math.max(inChannels, s.inChannel1 + 1, s.inChannel2 + 1) }, (_, i) => i)
 
-    $: outDevice = outputDevices.find((d) => d.value === s.audioOutput)
-    $: outChannelOptions = Array.from({ length: Math.max(outDevice?.channels || 2, s.outChannel + 1) }, (_, i) => i)
+    $: outDevice = outputDevices.find((d) => d.name === s.outDevice)
+    $: outChannels = outDevice?.channels || $timecodeOutStatus.channelCount || 2
+    $: outChannelOptions = Array.from({ length: Math.max(outChannels, s.outChannel + 1) }, (_, i) => i)
 
-    $: inputMissing = !!s.inAudioDevice && inputDevices.length > 0 && !inputDevices.some((d) => d.value === s.inAudioDevice)
-    $: outputMissing = !!s.audioOutput && outputDevices.length > 0 && !outputDevices.some((d) => d.value === s.audioOutput)
+    $: inputMissing = !loading && !!s.inAudioDevice && !inDevice
+    $: outputMissing = !loading && !!s.outDevice && !outDevice
+
+    // "Rogue Amoeba Software, Inc.: Timecode" -> "Timecode"
+    const deviceLabel = (name: string) => (name || "").replace(/^[^:]{2,60}:\s+/, "")
+
+    function channelLabel(ch: number, total: number) {
+        // stereo pairs read better on big interfaces: "Channel 3 (2 L)"
+        if (total <= 2) return `Channel ${ch + 1}`
+        return `Channel ${ch + 1}  ·  ${Math.floor(ch / 2) * 2 + 1}/${Math.floor(ch / 2) * 2 + 2} ${ch % 2 ? "R" : "L"}`
+    }
 
     const num = (e: Event) => Number((e.target as HTMLSelectElement).value)
     const str = (e: Event) => (e.target as HTMLSelectElement).value
@@ -55,9 +61,9 @@
             <span>Audio Input Device</span>
             <select value={s.inAudioDevice} on:change={(e) => updateTimecodeSettings({ inAudioDevice: str(e) })}>
                 <option value="">No Input Device</option>
-                {#if inputMissing}<option value={s.inAudioDevice}>Disconnected device</option>{/if}
+                {#if inputMissing}<option value={s.inAudioDevice}>{deviceLabel(s.inAudioDevice)} (not connected)</option>{/if}
                 {#each inputDevices as device}
-                    <option value={device.value}>{device.label}</option>
+                    <option value={device.name}>{deviceLabel(device.name)} ({device.channels} ch)</option>
                 {/each}
             </select>
         </label>
@@ -75,7 +81,7 @@
                 <span>SMPTE Timecode Input 1</span>
                 <select value={s.inChannel1.toString()} disabled={!s.inAudioDevice} on:change={(e) => updateTimecodeSettings({ inChannel1: num(e) })}>
                     <option value="-1">Select Input Channel</option>
-                    {#each inChannelOptions as ch}<option value={ch.toString()}>Channel {ch + 1}</option>{/each}
+                    {#each inChannelOptions as ch}<option value={ch.toString()}>{channelLabel(ch, inChannels)}</option>{/each}
                 </select>
             </label>
 
@@ -83,12 +89,14 @@
                 <span>SMPTE Timecode Input 2</span>
                 <select value={s.inChannel2.toString()} disabled={!s.inAudioDevice} on:change={(e) => updateTimecodeSettings({ inChannel2: num(e) })}>
                     <option value="-1">Select Input Channel</option>
-                    {#each inChannelOptions as ch}<option value={ch.toString()}>Channel {ch + 1}</option>{/each}
+                    {#each inChannelOptions as ch}<option value={ch.toString()}>{channelLabel(ch, inChannels)}</option>{/each}
                 </select>
             </label>
         </div>
 
-        {#if $timecodeLive.error}
+        {#if $audioDevices.error}
+            <p class="note warn">{$audioDevices.error}</p>
+        {:else if $timecodeLive.error}
             <p class="note warn">{$timecodeLive.error}</p>
         {:else}
             <p class="note">Turn on <b>Timecode</b> in a song's timeline and give it an offset (e.g. 01:00:00;00). When the incoming time reaches it, that song opens and its timeline runs in sync.</p>
@@ -108,11 +116,11 @@
         <div class:off={!s.outEnabled}>
             <label class="field full">
                 <span>Audio Output Device</span>
-                <select value={s.audioOutput} on:change={(e) => updateTimecodeSettings({ audioOutput: str(e) })}>
+                <select value={s.outDevice} on:change={(e) => updateTimecodeSettings({ outDevice: str(e) })}>
                     <option value="">No Output Device</option>
-                    {#if outputMissing}<option value={s.audioOutput}>Disconnected device</option>{/if}
+                    {#if outputMissing}<option value={s.outDevice}>{deviceLabel(s.outDevice)} (not connected)</option>{/if}
                     {#each outputDevices as device}
-                        <option value={device.value}>{device.label}</option>
+                        <option value={device.name}>{deviceLabel(device.name)} ({device.channels} ch)</option>
                     {/each}
                 </select>
             </label>
@@ -127,14 +135,18 @@
 
                 <label class="field">
                     <span>SMPTE Timecode Output</span>
-                    <select value={s.outChannel.toString()} disabled={!s.audioOutput} on:change={(e) => updateTimecodeSettings({ outChannel: num(e) })}>
+                    <select value={s.outChannel.toString()} disabled={!s.outDevice} on:change={(e) => updateTimecodeSettings({ outChannel: num(e) })}>
                         <option value="-1">All Channels</option>
-                        {#each outChannelOptions as ch}<option value={ch.toString()}>Channel {ch + 1}</option>{/each}
+                        {#each outChannelOptions as ch}<option value={ch.toString()}>{channelLabel(ch, outChannels)}</option>{/each}
                     </select>
                 </label>
             </div>
 
-            <p class="note">Sends the playing song's timeline as LTC (with the song's offset when its Timecode is on).</p>
+            {#if s.outEnabled && $timecodeOutStatus.error}
+                <p class="note warn">{$timecodeOutStatus.error}</p>
+            {:else}
+                <p class="note">Sends the playing song's timeline as LTC (with the song's offset when its Timecode is on).</p>
+            {/if}
         </div>
     </section>
 </div>

@@ -12,18 +12,18 @@
     $: s = getTimecodeSettings($timecode)
     $: inputs = (showBoth ? [1, 2] : [input]) as SmpteInput[]
 
-    function channelOf(i: SmpteInput) {
+    function channelOf(i: SmpteInput, _s: any = null) {
         return i === 1 ? s.inChannel1 : s.inChannel2
     }
 
-    function state(i: SmpteInput, _live: any) {
+    function state(i: SmpteInput, _live: any, _s: any = null) {
         if (!s.inAudioDevice || channelOf(i) < 0) return "off"
         if ($timecodeLive.error) return "error"
         return hasSignal($timecodeLive.inputs[i]) ? "on" : "idle"
     }
 
     function shortName(label: string) {
-        return (label || "").replace(/\s*\([0-9a-f]{4}:[0-9a-f]{4}\)\s*$/i, "").replace(/^Default - /, "")
+        return (label || "").replace(/^[^:]{2,60}:\s+/, "")
     }
 
     function openSettings() {
@@ -35,7 +35,7 @@
 <!-- svelte-ignore a11y-click-events-have-key-events -->
 <div class="sources" role="button" tabindex="-1" on:click={openSettings} data-title="Timecode settings">
     {#each inputs as i}
-        {@const st = state(i, $timecodeLive)}
+        {@const st = state(i, $timecodeLive, s)}
         {#if !(showBoth && st === "off" && i === 2)}
             <div class="source {st}" class:compact>
                 <span class="dot"></span>
@@ -46,7 +46,7 @@
                     <span class="state">{st === "off" ? "Not set" : st === "error" ? "Input error" : "No signal"}</span>
                 {/if}
                 {#if !compact && st !== "off"}
-                    <span class="meta">{shortName($timecodeLive.deviceLabel)}{$timecodeLive.deviceLabel ? " · " : ""}Ch {channelOf(i) + 1} · {s.inFramerate} fps</span>
+                    <span class="meta">{shortName($timecodeLive.deviceLabel)}{$timecodeLive.deviceLabel ? " · " : ""}Ch {channelOf(i, s) + 1} · {s.inFramerate} fps</span>
                 {/if}
             </div>
         {/if}

@@ -3,7 +3,8 @@
 //
 // Settings (Settings > Timecode) live in the existing `timecode` store (saved with the settings):
 //   receive: inAudioDevice, inFramerate, inChannel1, inChannel2 (0-based channel of the device, -1 = off)
-//   send:    outEnabled, audioOutput, outFramerate, outChannel (-1 = all channels)
+//   send:    outEnabled, outDevice, outFramerate, outChannel (-1 = all channels)
+// Devices are native audio devices (all channels), stored by name.
 // Per song (show layout timeline): timeline.timecode = { enabled, offset (ms), input (1|2) }, timeline.duration (s)
 
 import { get, writable } from "svelte/store"
@@ -18,7 +19,7 @@ export interface ChurchTimecodeSettings {
     inChannel1: number
     inChannel2: number
     outEnabled: boolean
-    audioOutput: string
+    outDevice: string
     outFramerate: number
     outChannel: number
 }
@@ -28,12 +29,13 @@ export const FRAMERATES = [24, 25, 29.97, 30]
 export function getTimecodeSettings(value: any = get(timecode)): ChurchTimecodeSettings {
     const a = value || {}
     return {
-        inAudioDevice: a.inAudioDevice || "",
+        // (an id from the old browser-based input isn't a device name - ignore it)
+        inAudioDevice: a.inAudioDevice && !/^[0-9a-f]{32,}$/i.test(a.inAudioDevice) ? a.inAudioDevice : "",
         inFramerate: Number(a.inFramerate) || 30,
         inChannel1: typeof a.inChannel1 === "number" ? a.inChannel1 : 0,
         inChannel2: typeof a.inChannel2 === "number" ? a.inChannel2 : -1,
         outEnabled: !!a.outEnabled,
-        audioOutput: a.audioOutput || "",
+        outDevice: a.outDevice || "",
         outFramerate: Number(a.outFramerate) || 30,
         outChannel: typeof a.outChannel === "number" ? a.outChannel : -1
     }
@@ -42,6 +44,11 @@ export function getTimecodeSettings(value: any = get(timecode)): ChurchTimecodeS
 export function updateTimecodeSettings(values: Partial<ChurchTimecodeSettings>) {
     timecode.update((a: any) => ({ ...(a || {}), ...values }))
 }
+
+// ---- native audio devices / output status ----
+
+export const audioDevices = writable<{ inputs: { name: string; channels: number }[]; outputs: { name: string; channels: number }[]; error: string }>({ inputs: [], outputs: [], error: "" })
+export const timecodeOutStatus = writable<{ open: boolean; device: string; channelCount: number; sampleRate: number; error: string }>({ open: false, device: "", channelCount: 0, sampleRate: 0, error: "" })
 
 // ---- live input state ----
 

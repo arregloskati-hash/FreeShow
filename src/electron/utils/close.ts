@@ -29,6 +29,11 @@ export async function exitApp() {
 
     console.info("Closing app!")
 
+    // FreeShow Church: stop native timecode audio first (its audio thread must not call into a closing app)
+    try {
+        require("../timecode/churchAudio").shutdownChurchAudio()
+    } catch {}
+
     dialogClose = false
 
     RtmpStreamer.stopAll()

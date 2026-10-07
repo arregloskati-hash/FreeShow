@@ -16,4 +16,9 @@ base.mac = {
     extendInfo: { ...(base.mac.extendInfo || {}), CFBundleDisplayName: "FreeShow Church" }
 }
 
+// native timecode audio (audify / RtAudio): keep the .node + its libraries outside the asar
+const unpackAudify = "**/node_modules/audify/**"
+base.mac.asarUnpack = [...(base.mac.asarUnpack || []), unpackAudify]
+if (base.win) base.win.asarUnpack = [...(base.win.asarUnpack || []), unpackAudify]
+
 module.exports = base

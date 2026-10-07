@@ -1,3 +1,4 @@
+import { configureChurchInput, configureChurchOutput, listChurchAudioDevices } from "../timecode/churchAudio"
 import * as Sentry from "@sentry/electron/main"
 import type { BrowserWindow, DesktopCapturerSource } from "electron"
 import { app, desktopCapturer, screen, shell, systemPreferences } from "electron"
@@ -238,6 +239,9 @@ export const mainResponses: MainResponses = {
     [Main.TIMECODE_VALUE]: (data) => updateTimecodeValue(data),
     [Main.TIMECODE_STATUS]: (data) => console.log(data),
     [Main.TIMECODE_AUDIO_DATA]: (data) => processAudioData(data),
+    [Main.CHURCH_AUDIO_DEVICES]: () => listChurchAudioDevices(),
+    [Main.CHURCH_TIMECODE_INPUT]: (data) => configureChurchInput(data),
+    [Main.CHURCH_TIMECODE_OUTPUT]: (data) => configureChurchOutput(data),
     // Spotify
     [Main.SPOTIFY_GET_STATE]: () => getSpotifyState(),
     [Main.SPOTIFY_COMMAND]: async (data) => {
