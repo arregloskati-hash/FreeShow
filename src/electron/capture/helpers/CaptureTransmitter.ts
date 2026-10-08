@@ -81,6 +81,11 @@ export class CaptureTransmitter {
         if (!hasRemainingChannels) delete this.lastChangeTimes[captureId]
     }
 
+    /** FreeShow Church: a channel saw a different frame (keeps the capture at full rate) */
+    static markChanged(captureId: string) {
+        if (this.lastChangeTimes[captureId] !== undefined) this.lastChangeTimes[captureId] = performance.now()
+    }
+
     static getTimeSinceLastChange(captureId: string): number {
         const lastChange = this.lastChangeTimes[captureId]
         if (lastChange === undefined) return 0
@@ -267,6 +272,7 @@ export class CaptureTransmitter {
     static sendBufferToNdi(captureId: string, image: NativeImage, { size }: { size: { width: number; height: number } }) {
         if (!NdiSender.NDI[captureId]?.sender) return
 
+        const processStart = performance.now()
         const buffer = image.toBitmap()
 
         const output = OutputHelper.getOutput(captureId)
@@ -274,7 +280,7 @@ export class CaptureTransmitter {
         const transparent = output?.transparent !== false
         const framerate = output?.captureOptions?.framerates?.ndi || 30
 
-        NdiSender.sendVideoBufferNDI(captureId, buffer, { size, ratio, framerate, transparent })
+        NdiSender.sendVideoBufferNDI(captureId, buffer, { size, ratio, framerate, transparent }, processStart)
     }
 
     private static convertToRGBA(buffer: Buffer): void {

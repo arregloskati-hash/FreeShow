@@ -2,6 +2,7 @@ import os from "os"
 import { toApp } from ".."
 import { CaptureHelper } from "../capture/CaptureHelper"
 import util from "./vingester-util"
+import { perf } from "../utils/churchPerformance"
 
 // Dynamic import for grandiose ES module to prevent TypeScript compilation issues
 let warned = false
@@ -56,6 +57,7 @@ export class NdiSender {
             pendingVideoFrame?: any
             sendingAudio?: boolean
             audioQueue?: any[]
+            lastFrame?: Buffer // FreeShow Church: previous processed frame (change detection)
             paddedVideoBuffer?: Buffer
             paddedVideoBufferStride?: number
             paddedVideoBufferHeight?: number
@@ -124,8 +126,10 @@ export class NdiSender {
         senderData.sendingVideo = true
         senderData.videoSendStartedAt = Date.now()
 
+        const sendStart = performance.now()
         try {
             await senderData.sender.video(frame)
+            perf.send(id, performance.now() - sendStart)
         } catch (err) {
             console.error("Error sending NDI video frame:", err)
         } finally {
@@ -252,7 +256,7 @@ export class NdiSender {
         }, this.CONNECTION_POLL_INTERVAL_MS)
     }
 
-    static async sendVideoBufferNDI(id: string, buffer: Buffer, { size = { width: 1280, height: 720 }, ratio = 16 / 9, framerate = 1, transparent = true }) {
+    static async sendVideoBufferNDI(id: string, buffer: Buffer, { size = { width: 1280, height: 720 }, ratio = 16 / 9, framerate = 1, transparent = true }, processStart = performance.now()) {
         const senderData = this.NDI[id]
         if (!senderData?.sender) return
 
@@ -267,6 +271,12 @@ export class NdiSender {
         // FreeShow Church: Chromium captures with premultiplied alpha, NDI expects straight alpha. Without this,
         // every soft edge (anti-aliased text, glows, shadows, fades) arrives darker and off-color at the receiver.
         else NdiSender.unpremultiplyAlpha(buffer)
+
+        // FreeShow Church: did the picture change? (exact compare - keeps the capture at full rate while it does)
+        if (!senderData.lastFrame || senderData.lastFrame.length !== buffer.length || !senderData.lastFrame.equals(buffer)) {
+            require("../capture/helpers/CaptureTransmitter").CaptureTransmitter.markChanged(id)
+        }
+        senderData.lastFrame = buffer
 
         const timecode = (this.timeStart + process.hrtime.bigint()) / this.TIMECODE_DIVISOR
 
@@ -288,6 +298,7 @@ export class NdiSender {
             data: sendBuffer
         }
 
+        perf.process(id, performance.now() - processStart)
         void this.sendQueuedVideoFrameNDI(id)
     }
 

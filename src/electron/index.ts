@@ -79,6 +79,11 @@ if (disableHWA === true) {
     console.info("Hardware Acceleration Disabled")
 }
 
+// FreeShow Church: on computers with two GPUs (e.g. Windows laptops with Intel + NVIDIA/AMD), use the fast one
+if (disableHWA !== true && config.get("preferHighPerformanceGpu") !== false) {
+    app.commandLine.appendSwitch("force_high_performance_gpu")
+}
+
 protocol.registerSchemesAsPrivileged([
     {
         scheme: "freeshow-protected",

@@ -8,6 +8,8 @@ export interface Config {
     bounds: Electron.Rectangle
     dataPath: string | null
     disableHardwareAcceleration: boolean | null
+    preferHighPerformanceGpu?: boolean // FreeShow Church (default on)
+    ndiSaveStill?: boolean // FreeShow Church (default on)
     autoErrorReporting?: boolean
     mediaFolderPath?: string
 }

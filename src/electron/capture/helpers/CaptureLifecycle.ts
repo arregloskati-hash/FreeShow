@@ -6,6 +6,7 @@ import { RtmpStreamer } from "../../streaming/RtmpStreamer"
 import { WebRtcHost } from "../../streaming/WebRtcHost"
 import { CaptureHelper } from "../CaptureHelper"
 import { CaptureTransmitter } from "./CaptureTransmitter"
+import { isNdiStillSaverEnabled, perf } from "../../utils/churchPerformance"
 
 export class CaptureLifecycle {
     private static readonly BACKPRESSURE_LOOKUP = [
@@ -21,6 +22,19 @@ export class CaptureLifecycle {
     // reduce capture rate when output content has not changed for a while (static slide/idle)
     private static readonly IDLE_AFTER_MS = 2000
     private static readonly IDLE_FPS = 3
+    // FreeShow Church: NDI while the picture is still - capture (and send) a few frames per second instead of 30.
+    // Any change to the output (slide, media, transition, ...) wakes it to full rate immediately.
+    private static readonly NDI_STILL_FPS = 5
+    private static readonly BOOST_MS = 1500
+    private static boostUntil: { [key: string]: number } = {}
+    private static wakers: { [key: string]: () => void } = {}
+
+    /** the output's content is about to change: capture now and at full rate for a moment */
+    static boost(id: string) {
+        if (!this.activeCaptures.has(id)) return
+        this.boostUntil[id] = performance.now() + this.BOOST_MS
+        this.wakers[id]?.()
+    }
 
     private static captureLoopToken: { [key: string]: number } = {}
     // FreeShow Church: last successfully captured frame per output (NDI watchdog detects a stalled loop)
@@ -115,6 +129,7 @@ export class CaptureLifecycle {
         console.info("Capture - starting: " + id)
         this.lastFrameAt[id] = Date.now()
 
+        let inFlight = false
         const captureFrame = async () => {
             const captureOpts = output.captureOptions
 
@@ -122,16 +137,21 @@ export class CaptureLifecycle {
                 this.activeCaptures.delete(id)
                 return
             }
+            inFlight = true
+            const frameStart = performance.now()
 
             // Blackmagic only - skip frames
             if (captureOpts.options?.blackmagic && !BlackmagicSender.canAcceptFrame(id)) {
+                inFlight = false
                 captureOpts.frameSubscription = setTimeout(captureFrame, 1000 / this.FALLBACK_FPS)
                 return
             }
 
             try {
+                const captureStart = performance.now()
                 const image = await this.captureAndProcessFrame(id, captureOpts)
                 if (this.captureLoopToken[id] !== token) return // replaced by a restarted loop meanwhile
+                if (captureOpts.options?.ndi) perf.capture(id, performance.now() - captureStart)
                 this.lastFrameAt[id] = Date.now()
 
                 // transmit frame (CaptureTransmitter handles skipping unchanged frames with keepalive)
@@ -140,13 +160,24 @@ export class CaptureLifecycle {
                 console.warn(`Capture failed for output ${id}:`, error)
             }
 
+            inFlight = false
             if (!this.shouldContinueCapture(id, token, captureOpts)) {
                 this.activeCaptures.delete(id)
                 return
             }
 
-            const delay = this.calculateFrameDelay(id, captureOpts)
+            // FreeShow Church: the interval counts from the start of this frame (waiting a full interval after the
+            // capture finished made a 30 fps output send ~22 fps)
+            const delay = Math.max(this.MIN_DELAY_MS, this.calculateFrameDelay(id, captureOpts) - (performance.now() - frameStart))
             captureOpts.frameSubscription = setTimeout(captureFrame, delay)
+        }
+
+        // wake the loop right away (instead of waiting out a slow "still" interval)
+        this.wakers[id] = () => {
+            const captureOpts = output.captureOptions
+            if (inFlight || this.captureLoopToken[id] !== token || !captureOpts) return
+            if (captureOpts.frameSubscription) clearTimeout(captureOpts.frameSubscription)
+            captureFrame()
         }
 
         captureFrame()
@@ -237,6 +268,12 @@ export class CaptureLifecycle {
         // static content - capture at a low rate until a change is detected
         // (Blackmagic and NDI frames bypass change detection / idle backoff to maintain video stream clocks)
         const timeSinceChange = CaptureTransmitter.getTimeSinceLastChange(id)
+
+        // FreeShow Church: NDI may slow down too while nothing changes (not with streams that need a steady clock)
+        const boosted = (this.boostUntil[id] || 0) > performance.now()
+        if (options.ndi && !options.blackmagic && !options.rtmp && !options.webrtc && !boosted && timeSinceChange > this.IDLE_AFTER_MS && isNdiStillSaverEnabled()) {
+            return Math.min(baseCaptureFrameRate, this.NDI_STILL_FPS)
+        }
         if (!options.blackmagic && !options.ndi && timeSinceChange > this.IDLE_AFTER_MS) {
             return Math.min(baseCaptureFrameRate, this.IDLE_FPS)
         }
@@ -253,6 +290,8 @@ export class CaptureLifecycle {
     static stopCapture(id: string) {
         this.captureLoopToken[id] = (this.captureLoopToken[id] || 0) + 1
         this.activeCaptures.delete(id)
+        delete this.wakers[id]
+        delete this.boostUntil[id]
 
         const output = OutputHelper.getOutput(id)
         const capture = output?.captureOptions

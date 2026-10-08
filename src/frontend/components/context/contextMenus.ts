@@ -53,6 +53,7 @@ export const contextMenuItems: { [key: string]: ContextMenuItem } = {
     church_settings_profiles: { label: "settings.profiles", icon: "profiles" },
     church_settings_theme: { label: "settings.theme", icon: "theme" },
     church_settings_shortcuts: { label: "settings.shortcuts", icon: "shortcuts" },
+    church_settings_performance: { label: "settings.performance", icon: "performance" },
     church_settings_other: { label: "settings.other", icon: "other" },
     shortcuts: { label: "popup.shortcuts", icon: "shortcut", shortcuts: ["Ctrl+?"] },
     rename: { label: "actions.rename", icon: "rename", iconColor: "#6effbe", shortcuts: ["F2"] },

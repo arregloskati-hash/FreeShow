@@ -1,3 +1,4 @@
+import { getPerformanceInfo } from "../utils/churchPerformance"
 import { configureChurchInput, configureChurchOutput, listChurchAudioDevices } from "../timecode/churchAudio"
 import * as Sentry from "@sentry/electron/main"
 import type { BrowserWindow, DesktopCapturerSource } from "electron"
@@ -242,6 +243,7 @@ export const mainResponses: MainResponses = {
     [Main.CHURCH_AUDIO_DEVICES]: () => listChurchAudioDevices(),
     [Main.CHURCH_TIMECODE_INPUT]: (data) => configureChurchInput(data),
     [Main.CHURCH_TIMECODE_OUTPUT]: (data) => configureChurchOutput(data),
+    [Main.CHURCH_PERFORMANCE]: () => getPerformanceInfo(),
     // Spotify
     [Main.SPOTIFY_GET_STATE]: () => getSpotifyState(),
     [Main.SPOTIFY_COMMAND]: async (data) => {

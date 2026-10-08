@@ -64,8 +64,8 @@ export function template(strings: Dictionary): any {
     }
 
     // FreeShow Church: Settings in the menu bar (Cmd + , on Mac / Ctrl + , on Windows)
-    const SETTINGS_TABS = ["general", "display_settings", "styles", "audio", "timecode", "connection", "files", "profiles", "theme", "shortcuts", "other"]
-    const SETTINGS_FALLBACK: { [key: string]: string } = { general: "General", display_settings: "Outputs", styles: "Styles", audio: "Audio", timecode: "Timecode", connection: "Connection", files: "Files", profiles: "Profiles", theme: "Theme", shortcuts: "Shortcuts", other: "Other" }
+    const SETTINGS_TABS = ["general", "display_settings", "styles", "audio", "timecode", "connection", "files", "profiles", "theme", "shortcuts", "performance", "other"]
+    const SETTINGS_FALLBACK: { [key: string]: string } = { general: "General", display_settings: "Outputs", styles: "Styles", audio: "Audio", timecode: "Timecode", connection: "Connection", files: "Files", profiles: "Profiles", theme: "Theme", shortcuts: "Shortcuts", performance: "Performance", other: "Other" }
     const settingsMenu = {
         label: strings.menu?.settings || "Settings",
         submenu: [

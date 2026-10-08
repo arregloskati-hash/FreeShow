@@ -5,6 +5,11 @@ import { clone } from "../../utils/helpers"
 import type { Output } from "../Output"
 import { OutputHelper } from "../OutputHelper"
 
+// FreeShow Church: messages that don't change what an output shows (sent often) - everything else wakes the
+// output's capture (NDI "still" mode) so a slide change goes out without delay
+const NO_VISUAL_CHANGE = new Set(["ACTIVE_TIMERS", "VISUALIZER_DATA", "METRONOME_TIMER", "PLAYING_VIDEO_STATE", "PLAYING_AUDIO", "REQUEST_VOLUME", "MAIN_REQUEST_VOLUME", "REQUEST_DYNAMIC_VALUE", "MAIN_REQUEST_DYNAMIC_VALUE", "REQUEST_DATA_MAIN", "MAIN_SHORTCUT", "FOCUS", "TO_FRONT", "CAPTURE", "PREVIEW"])
+let captureLifecycle: any = null
+
 export class OutputSend {
     static sendToOutputWindow(msg: Message) {
         OutputHelper.getAllOutputs().forEach(sendToWindow)
@@ -17,6 +22,11 @@ export class OutputSend {
             if (msg.channel === "OUTPUTS") tempMsg = onlySendToMatchingId(tempMsg, output.id)
 
             output.window.webContents.send(OUTPUT, tempMsg)
+
+            if (!NO_VISUAL_CHANGE.has(String(msg.channel))) {
+                if (!captureLifecycle) captureLifecycle = require("../../capture/helpers/CaptureLifecycle").CaptureLifecycle
+                captureLifecycle?.boost(output.id)
+            }
 
             // if (!output.previewWindow || output.previewWindow.isDestroyed()) return
             // output.previewWindow.webContents.send(OUTPUT, tempMsg)
