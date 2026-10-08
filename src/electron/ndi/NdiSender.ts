@@ -51,6 +51,8 @@ export class NdiSender {
             sender?: any
             timer?: NodeJS.Timeout
             sendingVideo?: boolean
+            videoSendStartedAt?: number // FreeShow Church: watchdog (detects a send that never finishes)
+            connections?: number
             pendingVideoFrame?: any
             sendingAudio?: boolean
             audioQueue?: any[]
@@ -120,6 +122,7 @@ export class NdiSender {
 
         senderData.pendingVideoFrame = undefined
         senderData.sendingVideo = true
+        senderData.videoSendStartedAt = Date.now()
 
         try {
             await senderData.sender.video(frame)
@@ -127,6 +130,7 @@ export class NdiSender {
             console.error("Error sending NDI video frame:", err)
         } finally {
             senderData.sendingVideo = false
+            senderData.videoSendStartedAt = 0
             if (this.NDI[id] === senderData && senderData.pendingVideoFrame) {
                 void this.sendQueuedVideoFrameNDI(id)
             }
@@ -168,7 +172,21 @@ export class NdiSender {
         return name || `FreeShow NDI${outputName ? ` - ${outputName}` : ""}`
     }
 
+    /** FreeShow Church: replace a sender with a fresh one (same name/groups) - used by the NDI watchdog */
+    static recreateSender(id: string) {
+        const current = this.NDI[id]
+        if (!current) return
+        void this.createSenderNDI(id, current.name, current.groups)
+    }
+
     static async createSenderNDI(id: string, name = "", groups?: string) {
+        // FreeShow Church: keep senders healthy during long services (lazy: avoids an import cycle)
+        try {
+            require("./NdiWatchdog").startNdiWatchdog()
+        } catch (err) {
+            console.warn("NDI watchdog:", err)
+        }
+
         if (this.NDI[id]) {
             this.stopSenderNDI(id)
         }
@@ -217,6 +235,7 @@ export class NdiSender {
             if (!this.NDI[id]?.sender) return
             /*  poll NDI for connections  */
             const conns: number = this.NDI[id].sender?.connections() || 0
+            this.NDI[id].connections = conns
             this.NDI[id].status = conns > 0 ? "connected" : "unconnected"
 
             const newStatus = String(this.NDI[id].status) + conns.toString()

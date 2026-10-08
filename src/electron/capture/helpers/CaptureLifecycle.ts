@@ -23,6 +23,30 @@ export class CaptureLifecycle {
     private static readonly IDLE_FPS = 3
 
     private static captureLoopToken: { [key: string]: number } = {}
+    // FreeShow Church: last successfully captured frame per output (NDI watchdog detects a stalled loop)
+    private static lastFrameAt: { [key: string]: number } = {}
+    private static readonly CAPTURE_TIMEOUT_MS = 3000
+
+    static getLastFrameTime(id: string) {
+        return this.activeCaptures.has(id) ? this.lastFrameAt[id] || 0 : 0
+    }
+
+    /** start the capture loop again (a capturePage that never returned leaves the old loop waiting forever) */
+    static restartCaptureLoop(id: string) {
+        const output = OutputHelper.getOutput(id)
+        const captureOpts = output?.captureOptions
+        if (!output || !captureOpts || !this.activeCaptures.has(id)) return
+        if (!captureOpts.window || captureOpts.window.isDestroyed()) return
+
+        if (captureOpts.frameSubscription) clearTimeout(captureOpts.frameSubscription)
+        const token = (this.captureLoopToken[id] || 0) + 1
+        this.captureLoopToken[id] = token
+        this.lastFrameAt[id] = Date.now()
+        try {
+            captureOpts.window.webContents.invalidate() // ask for a fresh paint
+        } catch {}
+        this.runCaptureLoop(id, token, output)
+    }
     private static activeCaptures: Set<string> = new Set()
 
     static startCapture(id: string, toggle: { [key: string]: boolean } = {}) {
@@ -89,6 +113,7 @@ export class CaptureLifecycle {
 
     private static runCaptureLoop(id: string, token: number, output: any) {
         console.info("Capture - starting: " + id)
+        this.lastFrameAt[id] = Date.now()
 
         const captureFrame = async () => {
             const captureOpts = output.captureOptions
@@ -106,6 +131,8 @@ export class CaptureLifecycle {
 
             try {
                 const image = await this.captureAndProcessFrame(id, captureOpts)
+                if (this.captureLoopToken[id] !== token) return // replaced by a restarted loop meanwhile
+                this.lastFrameAt[id] = Date.now()
 
                 // transmit frame (CaptureTransmitter handles skipping unchanged frames with keepalive)
                 this.transmitFrame(id, image)
@@ -136,7 +163,14 @@ export class CaptureLifecycle {
     }
 
     private static async captureAndProcessFrame(id: string, captureOpts: any) {
-        let image = await captureOpts.window.webContents.capturePage()
+        // FreeShow Church: never wait forever for a frame (a hung capture used to stop NDI for good)
+        let timeout: NodeJS.Timeout | undefined
+        let image = await Promise.race([
+            captureOpts.window.webContents.capturePage(),
+            new Promise<never>((_, reject) => {
+                timeout = setTimeout(() => reject(new Error("capturePage timed out")), this.CAPTURE_TIMEOUT_MS)
+            })
+        ]).finally(() => clearTimeout(timeout))
 
         // const output = OutputHelper.getOutput(id)
         // const targetBounds = output.intendedBounds
