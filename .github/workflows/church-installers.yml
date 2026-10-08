@@ -57,8 +57,14 @@ jobs:
           mkdir -p out
           for ARCH in arm64 x64; do
             rm -rf dist
+            # native timecode audio (audify): make sure the prebuilt binary matches this architecture
+            (cd node_modules/audify && npx --no-install prebuild-install -r napi --platform darwin --arch $ARCH)
             npx electron-builder --config church/electron-builder.installer.js --mac dir --$ARCH --publish never
             APP="$(ls -d dist/mac*/FreeShow.app | head -1)"
+            AUDIFY="$(find "$APP" -name audify.node | head -1)"
+            echo "audify: $AUDIFY"; file "$AUDIFY"
+            WANT="arm64"; [ "$ARCH" = "x64" ] && WANT="x86_64"
+            file "$AUDIFY" | grep -q "$WANT" || { echo "audify.node has the wrong architecture"; exit 1; }
             STAGE="stage-$ARCH"
             rm -rf "$STAGE" && mkdir "$STAGE"
             ditto "$APP" "$STAGE/FreeShow Church.app"
