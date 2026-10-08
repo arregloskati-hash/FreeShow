@@ -11,11 +11,36 @@ import { stopApiListener } from "./api"
 import { stopMidi } from "./midi"
 
 export let dialogClose = false // is unsaved
+
+// FreeShow Church: closing asks the main window's page to save first. If that page is frozen it never answers
+// and FreeShow could not be closed at all - then close anyway (it can't save in that state either).
+let mainUnresponsive = false
+let closeCheck: NodeJS.Timeout | null = null
+export function setMainUnresponsive(value: boolean) {
+    mainUnresponsive = value
+}
+
 export function callClose(e: Electron.Event) {
     if (dialogClose) return
     e.preventDefault()
 
+    if (mainUnresponsive) {
+        console.warn("Main window is not responding - closing without saving")
+        exitApp()
+        return
+    }
+
     sendMain(Main.CLOSE, false)
+
+    // the page may freeze while handling the close request
+    if (closeCheck) clearTimeout(closeCheck)
+    closeCheck = setTimeout(() => {
+        closeCheck = null
+        if (mainUnresponsive && !isExiting) {
+            console.warn("Main window stopped responding while closing - closing without saving")
+            exitApp()
+        }
+    }, 10000)
 }
 
 export function saveAndClose() {
@@ -28,6 +53,12 @@ export async function exitApp() {
     isExiting = true
 
     console.info("Closing app!")
+
+    // FreeShow Church: if anything below gets stuck (an output, NDI, a server), still quit
+    setTimeout(() => {
+        console.warn("Closing took too long - forcing exit")
+        app.exit()
+    }, 8000)
 
     // FreeShow Church: stop native timecode audio first (its audio thread must not call into a closing app)
     try {

@@ -110,7 +110,9 @@ export async function getPerformanceInfo() {
         totalCpu,
         totalMemoryMB,
         outputs,
-        cpuCores: require("os").cpus().length
+        cpuCores: require("os").cpus().length,
+        systemMemory: { totalMB: Math.round(require("os").totalmem() / 1048576), freeMB: Math.round(require("os").freemem() / 1048576) },
+        mainMemory: require("./churchMemory").getMemoryStats()
     }
 }
 

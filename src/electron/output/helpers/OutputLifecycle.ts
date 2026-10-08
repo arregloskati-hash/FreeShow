@@ -8,6 +8,7 @@ import { CaptureHelper } from "../../capture/CaptureHelper"
 import { NdiSender } from "../../ndi/NdiSender"
 import { setDataNDI } from "../../ndi/talk"
 import { wait } from "../../utils/helpers"
+import { collect } from "../../utils/churchMemory"
 import { outputOptions } from "../../utils/windowOptions"
 import { OutputHelper } from "../OutputHelper"
 import { setOutputAlwaysOnTop } from "./OutputAlwaysOnTop"
@@ -282,7 +283,8 @@ export class OutputLifecycle {
         this.hiddenByDisplayLoss.delete(id)
 
         CaptureHelper.Lifecycle.stopCapture(id)
-        NdiSender.stopSenderNDI(id)
+        // FreeShow Church: restarting with the same NDI name keeps the NDI sender (see NdiSender.createSenderNDI)
+        if (!this.keepsNdiSender(id, reopen)) NdiSender.stopSenderNDI(id)
         BlackmagicSender.stop(id)
 
         const output = OutputHelper.getOutput(id)
@@ -304,6 +306,10 @@ export class OutputLifecycle {
 
             const state = this.closing[id]
             delete this.closing[id]
+
+            // (it may have been removed for good, or renamed, while it was closing)
+            if (!this.keepsNdiSender(id, state?.reopen || null)) NdiSender.stopSenderNDI(id)
+            setTimeout(() => collect(), 1000) // release the closed output's frames
 
             if (state?.reopen) this.createOutput(state.reopen)
             state?.queued.forEach((fn) => {
@@ -336,6 +342,11 @@ export class OutputLifecycle {
             console.error(err)
             finish()
         }
+    }
+
+    private static keepsNdiSender(id: string, reopen: Output | null) {
+        if (!reopen?.ndi) return false
+        return NdiSender.hasSameSender(id, NdiSender.initNameNDI(reopen.ndiData?.name, reopen.name), reopen.ndiData?.groups)
     }
 
     static focusOutput(id: string) {

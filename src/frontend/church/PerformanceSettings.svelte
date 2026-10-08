@@ -43,6 +43,7 @@
 
     $: gpuOk = info && featureState(info.gpuStatus?.gpu_compositing).cls === "on" && featureState(info.gpuStatus?.video_decode).cls === "on"
     $: topProcesses = info ? [...info.processes].sort((a, b) => b.cpu - a.cpu).slice(0, 10) : []
+    $: memoryLow = !!info?.systemMemory && info.systemMemory.freeMB / info.systemMemory.totalMB < 0.1
     $: cpuOfMachine = info ? Math.round((info.totalCpu / Math.max(1, info.cpuCores)) * 10) / 10 : 0
 </script>
 
@@ -61,8 +62,8 @@
                 <span class="small">of the whole computer ({info.cpuCores} cores)</span>
             </div>
             <div class="stat">
-                <span class="big">{Math.round(info.totalMemoryMB)} MB</span>
-                <span class="small">memory</span>
+                <span class="big {memoryLow ? 'warn' : ''}">{Math.round(info.totalMemoryMB)} MB</span>
+                <span class="small">memory{info.systemMemory ? ` · ${Math.round(info.systemMemory.freeMB / 1024 * 10) / 10} of ${Math.round(info.systemMemory.totalMB / 1024)} GB free` : ""}</span>
             </div>
             <div class="stat">
                 <span class="big {gpuOk ? 'ok' : 'warn'}">{gpuOk ? "GPU on" : "GPU limited"}</span>

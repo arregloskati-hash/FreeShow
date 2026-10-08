@@ -180,10 +180,29 @@ export class NdiSender {
     static recreateSender(id: string) {
         const current = this.NDI[id]
         if (!current) return
-        void this.createSenderNDI(id, current.name, current.groups)
+        void this.createSenderNDI(id, current.name, current.groups, true)
     }
 
-    static async createSenderNDI(id: string, name = "", groups?: string) {
+    /** FreeShow Church: is there a working sender for this output with exactly this name and groups? */
+    static hasSameSender(id: string, name = "", groups?: string) {
+        const current = this.NDI[id]
+        return !!current?.sender && current.name === name && (current.groups || "") === (groups || "")
+    }
+
+    static async createSenderNDI(id: string, name = "", groups?: string, force = false) {
+        // FreeShow Church: an output restarting with the same NDI name keeps its sender. Destroying an NDI sender
+        // blocks the app until NDI has closed its connections (seconds on some Windows machines), and every
+        // output setting change restarts the output - so changing outputs used to freeze FreeShow.
+        if (!force && this.hasSameSender(id, name, groups)) {
+            const current = this.NDI[id]
+            current.lastFrame = undefined
+            current.pendingVideoFrame = undefined
+            try {
+                require("./NdiWatchdog").startNdiWatchdog()
+            } catch {}
+            return
+        }
+
         // FreeShow Church: keep senders healthy during long services (lazy: avoids an import cycle)
         try {
             require("./NdiWatchdog").startNdiWatchdog()

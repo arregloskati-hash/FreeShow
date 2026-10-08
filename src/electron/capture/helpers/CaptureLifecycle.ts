@@ -7,6 +7,7 @@ import { WebRtcHost } from "../../streaming/WebRtcHost"
 import { CaptureHelper } from "../CaptureHelper"
 import { CaptureTransmitter } from "./CaptureTransmitter"
 import { isNdiStillSaverEnabled, perf } from "../../utils/churchPerformance"
+import { noteFrameBytes } from "../../utils/churchMemory"
 
 export class CaptureLifecycle {
     private static readonly BACKPRESSURE_LOOKUP = [
@@ -202,6 +203,8 @@ export class CaptureLifecycle {
                 timeout = setTimeout(() => reject(new Error("capturePage timed out")), this.CAPTURE_TIMEOUT_MS)
             })
         ]).finally(() => clearTimeout(timeout))
+        const captured = image.getSize()
+        noteFrameBytes(captured.width * captured.height * 4)
 
         // const output = OutputHelper.getOutput(id)
         // const targetBounds = output.intendedBounds
@@ -214,6 +217,7 @@ export class CaptureLifecycle {
             const currentSize = image.getSize()
             if (intended?.width && intended?.height && currentSize.width && (currentSize.width !== intended.width || currentSize.height !== intended.height)) {
                 image = image.resize({ width: intended.width, height: intended.height, quality: "good" })
+                noteFrameBytes(intended.width * intended.height * 4)
             }
         }
 
@@ -223,6 +227,7 @@ export class CaptureLifecycle {
             const currentSize = image.getSize()
             if (currentSize.width !== targetSize.width || currentSize.height !== targetSize.height) {
                 image = image.resize({ width: targetSize.width, height: targetSize.height, quality: "good" })
+                noteFrameBytes(targetSize.width * targetSize.height * 4)
             }
             // } else if (targetBounds?.width && targetBounds?.height) {
             //     const currentSize = image.getSize()

@@ -1,6 +1,7 @@
 // ----- FreeShow -----
 // This is the electron entry point
 
+import "./utils/churchThreadpool" // FreeShow Church: must stay the first import
 import type { Rectangle } from "electron"
 import { BrowserWindow, Menu, app, ipcMain, powerSaveBlocker, protocol, screen } from "electron"
 import { AUDIO, BLACKMAGIC, CLOUD, EXPORT, MAIN, NDI, OUTPUT, STARTUP } from "../types/Channels"
@@ -18,9 +19,10 @@ import { autoErrorReport } from "./IPC/responsesMain"
 import { receiveNDI } from "./ndi/talk"
 import { OutputHelper } from "./output/OutputHelper"
 import { setRtmpNoticeListener, setRtmpStatusListener } from "./streaming/RtmpStreamer"
-import { callClose, exitApp, saveAndClose } from "./utils/close"
+import { callClose, exitApp, saveAndClose, setMainUnresponsive } from "./utils/close"
 import { isDraggableAreaVisible, isWithinDisplayBounds, mainWindowInitialize, openDevTools, parseCommandLineArgs } from "./utils/init"
 import { template } from "./utils/menuTemplate"
+import { initChurchMemory } from "./utils/churchMemory"
 import { spellcheck } from "./utils/spellcheck"
 import { loadingOptions, mainOptions } from "./utils/windowOptions"
 
@@ -106,6 +108,7 @@ app.on("ready", async () => {
 
 export let powerSaveBlockerId: number | null = null
 async function startApp() {
+    initChurchMemory() // FreeShow Church: keep captured frames from piling up in memory
     if (RECORD_STARTUP_TIME) console.time("Initial")
 
     // WIDEVINE
@@ -267,6 +270,9 @@ function setMainListeners() {
 
     mainWindow.on("close", callClose)
     mainWindow.once("closed", exitApp)
+    // FreeShow Church: know when the main window's page is frozen (closing must still work then)
+    mainWindow.on("unresponsive", () => setMainUnresponsive(true))
+    mainWindow.on("responsive", () => setMainUnresponsive(false))
 
     mainWindow.webContents.on("context-menu", (_, a) => spellcheck(a))
 }
