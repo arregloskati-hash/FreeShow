@@ -1,3 +1,4 @@
+import { getRedundancyStatus, redundancySend, setRedundancySettings, takeOver } from "../redundancy/redundancy"
 import { getPerformanceInfo } from "../utils/churchPerformance"
 import { configureChurchInput, configureChurchOutput, listChurchAudioDevices } from "../timecode/churchAudio"
 import * as Sentry from "@sentry/electron/main"
@@ -244,6 +245,13 @@ export const mainResponses: MainResponses = {
     [Main.CHURCH_TIMECODE_INPUT]: (data) => configureChurchInput(data),
     [Main.CHURCH_TIMECODE_OUTPUT]: (data) => configureChurchOutput(data),
     [Main.CHURCH_PERFORMANCE]: () => getPerformanceInfo(),
+    [Main.REDUNDANCY_CONFIG]: (data) => setRedundancySettings(data || {}),
+    [Main.REDUNDANCY_STATUS]: () => getRedundancyStatus(),
+    [Main.REDUNDANCY_SEND]: (data) => redundancySend(data),
+    [Main.REDUNDANCY_TAKEOVER]: () => takeOver(),
+    [Main.REDUNDANCY_RECEIVE]: () => {},
+    [Main.REDUNDANCY_SNAPSHOT_REQUEST]: () => {},
+    [Main.REDUNDANCY_MEDIA_READY]: () => {},
     // Spotify
     [Main.SPOTIFY_GET_STATE]: () => getSpotifyState(),
     [Main.SPOTIFY_COMMAND]: async (data) => {

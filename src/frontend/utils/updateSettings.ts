@@ -1,3 +1,4 @@
+import { initRedundancy } from "../church/redundancy/redundancy"
 import { initTimecodeReceiver } from "../church/timecode/receiver"
 import { startOutputSync } from "../church/outputSync"
 import { get } from "svelte/store"
@@ -144,6 +145,7 @@ export function updateSettings(data: any) {
 
     // FreeShow Church: SMPTE timecode input (Settings > Timecode)
     setTimeout(initTimecodeReceiver, 1500)
+    setTimeout(initRedundancy, 2500) // FreeShow Church: master/backup mirroring
 
     // output
     if (data.outputs) {

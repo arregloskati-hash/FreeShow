@@ -1,3 +1,4 @@
+import { isBackupMuted } from "../../../church/redundancy/role"
 // plays the audio part of any given video element, and syncs the visible video to this
 
 import { get } from "svelte/store"
@@ -613,6 +614,7 @@ export class VideoPlayer {
     }
 
     static getVolume(path: string) {
+        if (isBackupMuted()) return 0 // FreeShow Church: a backup computer stays silent
         return this.getGlobalOptions(path)?.volume ?? 1
     }
 

@@ -190,6 +190,10 @@ export class NdiSender {
     }
 
     static async createSenderNDI(id: string, name = "", groups?: string, force = false) {
+        // FreeShow Church: a backup computer's NDI sources are marked, so receivers can tell them apart
+        try {
+            if (require("../redundancy/redundancy").isRedundancyBackup() && !name.endsWith(" (Backup)")) name += " (Backup)"
+        } catch {}
         // FreeShow Church: an output restarting with the same NDI name keeps its sender. Destroying an NDI sender
         // blocks the app until NDI has closed its connections (seconds on some Windows machines), and every
         // output setting change restarts the output - so changing outputs used to freeze FreeShow.

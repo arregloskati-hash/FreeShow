@@ -274,6 +274,13 @@ export class CaptureLifecycle {
         // (Blackmagic and NDI frames bypass change detection / idle backoff to maintain video stream clocks)
         const timeSinceChange = CaptureTransmitter.getTimeSinceLastChange(id)
 
+        // FreeShow Church: an NDI output whose sender could not be created (NDI missing/failed) has nobody to send to
+        if (options.ndi && !options.blackmagic && !options.rtmp && !options.webrtc && !options.server && !options.stage) {
+            try {
+                if (!require("../../ndi/NdiSender").NdiSender.NDI[id]) return 1
+            } catch {}
+        }
+
         // FreeShow Church: NDI may slow down too while nothing changes (not with streams that need a steady clock)
         const boosted = (this.boostUntil[id] || 0) > performance.now()
         if (options.ndi && !options.blackmagic && !options.rtmp && !options.webrtc && !boosted && timeSinceChange > this.IDLE_AFTER_MS && isNdiStillSaverEnabled()) {

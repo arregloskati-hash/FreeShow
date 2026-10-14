@@ -1,7 +1,7 @@
 // ----- FreeShow -----
 // This is the electron entry point
 
-import "./utils/churchThreadpool" // FreeShow Church: must stay the first import
+import "./utils/churchEarly" // FreeShow Church: must stay the first import
 import type { Rectangle } from "electron"
 import { BrowserWindow, Menu, app, ipcMain, powerSaveBlocker, protocol, screen } from "electron"
 import { AUDIO, BLACKMAGIC, CLOUD, EXPORT, MAIN, NDI, OUTPUT, STARTUP } from "../types/Channels"
@@ -141,6 +141,15 @@ async function startApp() {
     if (RECORD_STARTUP_TIME) console.timeEnd("Initial")
 
     createMain()
+
+    // FreeShow Church: master/backup redundancy (lazy: avoids an import cycle)
+    setTimeout(() => {
+        try {
+            require("./redundancy/redundancy").startRedundancy()
+        } catch (err) {
+            console.error("Redundancy:", err)
+        }
+    }, 2000)
 
     // prevent display sleeping
     powerSaveBlockerId = powerSaveBlocker.start("prevent-display-sleep")

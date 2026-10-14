@@ -173,6 +173,13 @@ export enum Main {
     CHURCH_TIMECODE_INPUT = "CHURCH_TIMECODE_INPUT",
     CHURCH_TIMECODE_OUTPUT = "CHURCH_TIMECODE_OUTPUT",
     CHURCH_PERFORMANCE = "CHURCH_PERFORMANCE",
+    REDUNDANCY_CONFIG = "REDUNDANCY_CONFIG",
+    REDUNDANCY_STATUS = "REDUNDANCY_STATUS",
+    REDUNDANCY_SEND = "REDUNDANCY_SEND",
+    REDUNDANCY_RECEIVE = "REDUNDANCY_RECEIVE",
+    REDUNDANCY_TAKEOVER = "REDUNDANCY_TAKEOVER",
+    REDUNDANCY_SNAPSHOT_REQUEST = "REDUNDANCY_SNAPSHOT_REQUEST",
+    REDUNDANCY_MEDIA_READY = "REDUNDANCY_MEDIA_READY",
     // Spotify
     SPOTIFY_GET_STATE = "SPOTIFY_GET_STATE",
     SPOTIFY_COMMAND = "SPOTIFY_COMMAND",
@@ -280,6 +287,10 @@ export interface MainSendPayloads {
     [Main.TIMECODE_AUDIO_DATA]: { mode: TimecodeMode; buffer: Uint8Array; input?: number; framerate?: number }
     [Main.CHURCH_AUDIO_DEVICES]: undefined
     [Main.CHURCH_PERFORMANCE]: undefined
+    [Main.REDUNDANCY_CONFIG]: any
+    [Main.REDUNDANCY_STATUS]: undefined
+    [Main.REDUNDANCY_SEND]: any
+    [Main.REDUNDANCY_TAKEOVER]: undefined
     [Main.CHURCH_TIMECODE_INPUT]: { device: string; channels: [number, number]; framerate: number; force?: boolean }
     [Main.CHURCH_TIMECODE_OUTPUT]: { enabled: boolean; device: string; channel: number; force?: boolean }
     // Spotify
@@ -389,6 +400,11 @@ export interface MainReturnPayloads {
     [Main.CHURCH_TIMECODE_INPUT]: { listening: boolean; device: string; channelCount: number; sampleRate: number; error: string }
     [Main.CHURCH_TIMECODE_OUTPUT]: { open: boolean; device: string; channelCount: number; sampleRate: number; error: string }
     [Main.CHURCH_PERFORMANCE]: Promise<any>
+    [Main.REDUNDANCY_CONFIG]: any
+    [Main.REDUNDANCY_STATUS]: any
+    [Main.REDUNDANCY_RECEIVE]: any
+    [Main.REDUNDANCY_SNAPSHOT_REQUEST]: any
+    [Main.REDUNDANCY_MEDIA_READY]: any
     // Spotify
     [Main.SPOTIFY_GET_STATE]: Promise<SpotifyState | null>
     [Main.SPOTIFY_COMMAND]: Promise<boolean>

@@ -25,6 +25,7 @@
     import ShortcutsSettings from "../../church/ShortcutsSettings.svelte"
     import TimecodeSettings from "../../church/timecode/TimecodeSettings.svelte"
     import PerformanceSettings from "../../church/PerformanceSettings.svelte"
+    import RedundancySettings from "../../church/redundancy/RedundancySettings.svelte"
     import ThemeButtons from "./tabs/ThemeButtons.svelte"
     import ThemeTabs from "./tabs/ThemeTabs.svelte"
 
@@ -41,6 +42,7 @@
         styles: "settings.styles_hint",
         audio: "settings.audio_hint",
         performance: "Is the GPU being used, and what each part of FreeShow costs right now.",
+        redundancy: "Mirror this computer to a backup computer in real time, or follow a master.",
         timecode: "Receive SMPTE timecode to run song timelines in sync, or send it from the playing song.",
         profiles: "profile.profiles_hint"
     }
@@ -98,6 +100,8 @@
             <TimecodeSettings />
         {:else if tabId === "performance"}
             <PerformanceSettings />
+        {:else if tabId === "redundancy"}
+            <RedundancySettings />
         {:else if tabId === "shortcuts"}
             <ShortcutsSettings />
         {:else if tabId === "other"}

@@ -8,6 +8,7 @@
     import T from "../helpers/T.svelte"
     import Button from "../inputs/Button.svelte"
     import TopButton from "../inputs/TopButton.svelte"
+    import RedundancyPill from "../../church/redundancy/RedundancyPill.svelte"
     import { DEFAULT_DISPLAY_NAME } from "../../utils/SocketHelper"
 
     export let isWindows = false
@@ -112,6 +113,7 @@
         <TopButton id="stage" />
         <!-- FreeShow Church: Settings moved to the menu bar (Settings menu, Cmd/Ctrl + ,) -->
     </span>
+    <RedundancyPill />
     <span style="width: var(--navigation-width);justify-content: flex-end;">
         <TopButton id="draw" red={$drawTool === "fill" || ($drawTool === "zoom" && $drawSettings.zoom?.size !== 100) || !!($drawTool === "paint" && $paintCache?.length)} hideLabel />
 

@@ -1,3 +1,4 @@
+import { isFollowingMaster } from "../redundancy/role"
 // ----- FreeShow Church -----
 // Timecode chase: every song in the current project with "Timecode" checked follows incoming SMPTE.
 // When the time enters a song's range (offset .. offset + duration) that song is opened and its timeline runs
@@ -62,6 +63,7 @@ function findTarget(input: SmpteInput, time: number): Target | null {
 }
 
 export function chaseFrame(input: SmpteInput, time: number) {
+    if (isFollowingMaster()) return // FreeShow Church: on a backup the master does the chasing
     if (switching) return
     if (chasing && chasing.input !== input && chasing.player?.isPlaying) {
         // another input is driving a song right now - only take over when this input matches a song too

@@ -1,3 +1,4 @@
+import { isFollowingMaster } from "../../church/redundancy/role"
 import { get } from "svelte/store"
 import { uid } from "uid"
 import { actionHistory, actions, audioPlaylists, audioStreams, runningActions, shows, stageShows, styles } from "../../stores"
@@ -31,6 +32,8 @@ const loopPrevention = { actionId: "", count: 0, timeout: null as NodeJS.Timeout
 export async function runAction(action, { midiIndex = -1, slideIndex = -1, source = "action" } = {}, isCategoryAction = false) {
     // console.log(action)
     if (!action) return
+    // FreeShow Church: a backup only mirrors the master (its actions run on the master)
+    if (isFollowingMaster()) return
     action = convertOldMidiToNewAction(action)
 
     const actionTriggers = action.triggers || []

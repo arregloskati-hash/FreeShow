@@ -22,6 +22,7 @@
     import { focusArea, logerror, mainClick, toggleRemoteStream } from "./utils/common"
     import { keydown } from "./utils/shortcuts"
     import { installChurchShortcuts } from "./church/churchShortcuts"
+    import RedundancyShield from "./church/redundancy/RedundancyShield.svelte"
     import { startup } from "./utils/startup"
     import { setUiStyle } from "./church/ember"
 
@@ -96,6 +97,7 @@
             <ProgressPanel />
 
             <MainLayout />
+            <RedundancyShield />
 
             {#if ready && Object.keys($profiles).filter((a) => a !== "admin").length && $activeProfile === null}
                 <ProfileSelector />

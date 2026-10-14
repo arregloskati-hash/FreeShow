@@ -1335,6 +1335,7 @@
         "shortcuts": "Shortcuts",
         "timecode": "Timecode",
         "performance": "Performance",
+        "redundancy": "Redundancy",
         "audio": "Audio",
         "display": "Display",
         "connection": "Connection",

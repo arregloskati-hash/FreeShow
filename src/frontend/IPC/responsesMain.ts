@@ -1,3 +1,4 @@
+import { mediaReady as redundancyMediaReady, receiveRedundancy, sendSnapshot as sendRedundancySnapshot, setStatus as setRedundancyStatus } from "../church/redundancy/redundancy"
 import { receiveTimecodeFrame } from "../church/timecode/receiver"
 import { get } from "svelte/store"
 import type { ContentProviderId } from "../../electron/contentProviders/base/types"
@@ -589,6 +590,11 @@ export const mainResponses: MainResponses = {
         receiveIMPORT[a.channel]()
     },
     // Timecode
+    // FreeShow Church: redundancy
+    [Main.REDUNDANCY_STATUS]: (data) => setRedundancyStatus(data),
+    [Main.REDUNDANCY_RECEIVE]: (data) => receiveRedundancy(data),
+    [Main.REDUNDANCY_SNAPSHOT_REQUEST]: () => sendRedundancySnapshot(),
+    [Main.REDUNDANCY_MEDIA_READY]: (data) => redundancyMediaReady(data),
     [Main.TIMECODE_VALUE]: (data) => (typeof data === "object" && data ? receiveTimecodeFrame(data as any) : updateTimelineTime(data as number)),
     [Main.TIMECODE_STATUS]: (data) => updateTimelineStatus(data!),
     [Main.TIMECODE_AUDIO_DATA]: (data) => processTimecodeFrame(data!)

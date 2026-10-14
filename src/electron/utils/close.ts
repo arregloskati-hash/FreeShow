@@ -67,6 +67,9 @@ export async function exitApp() {
 
     dialogClose = false
 
+    try {
+        require("../redundancy/redundancy").stopRedundancy()
+    } catch {}
     RtmpStreamer.stopAll()
     await OutputHelper.Lifecycle.closeAllOutputs()
     NdiReceiver.stopReceiversNDI()
