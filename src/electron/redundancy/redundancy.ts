@@ -17,7 +17,7 @@ import http from "http"
 import os from "os"
 import path from "path"
 import { Server, type Socket } from "socket.io"
-import { io as ioClient, type Socket as ClientSocket } from "socket.io-client"
+import type { Socket as ClientSocket } from "socket.io-client"
 import { Main } from "../../types/IPC/Main"
 import { config } from "../data/store"
 import { sendMain } from "../IPC/main"
@@ -418,7 +418,17 @@ function connectTo(address: string, port: number, name: string) {
     state = "connecting"
     console.info(`Redundancy: connecting to master ${name} (${address})`)
 
-    const socket = ioClient(`http://${address}:${port}`, { auth: { key: keyOf(settings.code), name: settings.name }, reconnection: true, reconnectionDelay: 500, reconnectionDelayMax: 2000, timeout: 3000, transports: ["websocket"] })
+    // (loaded only when needed: a missing module must never stop FreeShow from starting)
+    let ioClient: any
+    try {
+        ioClient = require("socket.io-client").io
+    } catch (err) {
+        errorText = "Redundancy is not available in this build"
+        state = "error"
+        console.error("Redundancy:", err)
+        return
+    }
+    const socket: ClientSocket = ioClient(`http://${address}:${port}`, { auth: { key: keyOf(settings.code), name: settings.name }, reconnection: true, reconnectionDelay: 500, reconnectionDelayMax: 2000, timeout: 3000, transports: ["websocket"] })
     client = socket
 
     socket.on("connect", () => {
