@@ -22,3 +22,5 @@ test-results/
 *.ipr
 *.iws
 .serena
+# FreeShow Church: private event payloads (songs, fonts) - never commit
+church/event/

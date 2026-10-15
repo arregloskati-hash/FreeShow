@@ -26,10 +26,20 @@ jobs:
         run: npm run build
       - name: Package installer
         run: npx electron-builder --config church/electron-builder.installer.js --win nsis --x64 --publish never
+      # the unpacked app, so an event installer (with private songs/fonts) can be packed locally from it
+      - name: Zip unpacked app
+        if: hashFiles('church/PUBLISH_WIN_UNPACKED') != ''
+        shell: pwsh
+        run: |
+          $v = Get-Content church/INSTALLER_VERSION -Raw
+          $v = $v.Trim()
+          Compress-Archive -Path dist/win-unpacked -DestinationPath "dist/FreeShow-Church-$v-Windows-unpacked.zip"
       - uses: actions/upload-artifact@v4
         with:
           name: windows
-          path: dist/*.exe
+          path: |
+            dist/*.exe
+            dist/*-Windows-unpacked.zip
           if-no-files-found: error
 
   mac:
@@ -101,4 +111,5 @@ jobs:
           body_path: church/INSTALL.md
           files: |
             installers/windows/*.exe
+            installers/windows/*.zip
             installers/mac/*.dmg

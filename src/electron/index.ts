@@ -23,6 +23,7 @@ import { callClose, exitApp, saveAndClose, setMainUnresponsive } from "./utils/c
 import { isDraggableAreaVisible, isWithinDisplayBounds, mainWindowInitialize, openDevTools, parseCommandLineArgs } from "./utils/init"
 import { template } from "./utils/menuTemplate"
 import { initChurchMemory } from "./utils/churchMemory"
+import { seedEventData } from "./utils/churchEventSeed"
 import { spellcheck } from "./utils/spellcheck"
 import { loadingOptions, mainOptions } from "./utils/windowOptions"
 
@@ -127,6 +128,7 @@ async function startApp() {
     setRtmpNoticeListener((message) => sendToMain(ToMain.ALERT, message))
 
     await setupStores()
+    await seedEventData() // FreeShow Church: event installers start with the event ready
 
     registerProtectedProtocol()
     cleanupProtectedCache().catch((err) => console.error("Protected cache cleanup failed:", err))
